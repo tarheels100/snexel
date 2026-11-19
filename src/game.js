@@ -84,12 +84,14 @@ const GAME_CONFIG = {
   // and slower, dodges every item and the snake, freezes when cornered, and is
   // captured (→ mini-game handoff in M4) on any overlap with the main snake.
   // Running over an unhatched egg squashes it: no death, no baby.
-  egg: { chance: 0.03, hatchBites: 3, babyLen: 3, babySpeedMul: 1.5, babyWidth: 6 },
+  egg: { chance: 0.03, hatchBites: 3, babyLen: 3, babySpeedMul: 1.5, babyWidth: 6,
+         bannerMs: 1.5 },   // "Catch me if you can!" flash duration after hatch
   // mini-game (M3): classic 1-snake round on a bright centered 20x16 grid at
   // 6px cells — apples only, walls kill, wrap always OFF, flat clock; win at
   // goal apples → fireworks → fade → handoff back (M4 adds countdown/reward).
   mini: { gw: 20, gh: 16, cell: 6, snakeLen: 3, goal: 10, apples: 2, grow: 1,
-          tickMs: 130, winMs: 0.6, fxMs: 2.0, diedMs: 0.8, fadeMs: 0.5 },
+          tickMs: 130, winMs: 0.6, fxMs: 2.0, diedMs: 0.8, fadeMs: 0.5,
+          countMs: 3.35 },   // entry "3 2 1 GO!" (1s per digit + 0.35s GO), same as the resume countdown
 };
 const cfg = () => (mode === 2 ? GAME_CONFIG.versus : GAME_CONFIG.solo);
 
@@ -556,6 +558,7 @@ function startJingle() {
 }
 
 // three quiet rising beeps (3,2,1) + a longer "GO" blip — quiet like the poop-plop precedent
+// (shared: minigame.js's entry countdown calls these with the same step semantics)
 function countdownBeep(step) {
   if (!audioCtx || sfxMuted) return;
   const t = audioCtx.currentTime;

@@ -10,8 +10,12 @@
  *    game.js freezes entirely (no tick, no draw) during state "minigame".
  *  - Classic rules on a bright 20x16 overlay grid at 6px/cell: apples only,
  *    walls kill, wrap stays OFF regardless of the main wrap setting.
- *  - Phases: play → win → fireworks → fade → done. Death (wall/self) gets a
- *    red flash phase, then fade → done. P pauses; Esc quits early.
+ *  - Phases: count → play → win → fireworks → fade → done. Death (wall/self)
+ *    gets a red flash phase, then fade → done. P pauses; Esc quits early —
+ *    including during the entry countdown ("3 2 1 GO!" over the mini board,
+ *    mirroring game.js's resume countdown; steering is ignored until GO).
+ *  - Music engine starts at GO, not at handoff — symmetric with the main
+ *    track resuming only after the return countdown finishes.
  *  - MiniGame.music is a no-op stub matching the window.ChillMusic engine
  *    contract (start/stop/setVolume/setIntensity/gameOver/playing); M4 swaps
  *    a real engine in via MiniGame.setMusic().
@@ -64,7 +68,7 @@
       oy: (canvas.height - cfg.gh * cfg.cell) / 2,
       snake: [], dir: "r", queue: [], alive: true, score: 0,
       apples: [], bulge: [], acc: 0,
-      phase: "play", phaseT: 0, fade: 0, reason: null,
+      phase: "count", phaseT: 0, countStep: -1, fade: 0, reason: null,
       fx: [], fxTimer: 0,
       onDone: opts.onDone || (() => {}),
     };
@@ -74,7 +78,7 @@
 
     onKeyDown = e => handleKey(e);
     window.addEventListener("keydown", onKeyDown);
-    music.start();
+    // music starts at GO (end of the entry countdown), not at handoff
 
     let prev = performance.now();
     const step = t => {
@@ -91,7 +95,7 @@
     if (!g) return;
     const code = e.code;
     if (code === "Escape") {
-      if (["play", "paused", "win", "fireworks"].includes(g.phase)) goFade(g.reason || "skipped");
+      if (["play", "paused", "win", "fireworks", "count"].includes(g.phase)) goFade(g.reason || "skipped");
       return;
     }
     if (code === "KeyP") {
@@ -157,6 +161,12 @@
     }
   }
 
+  function beginPlay() {
+    g.phase = "play";
+    g.acc = 0;
+    music.start();               // engine kicks in at GO (JauntyMusic in M4)
+  }
+
   function die(reason) {
     g.alive = false;
     g.reason = reason;
@@ -201,6 +211,12 @@
     g.fx = g.fx.filter(p => p.life > 0);
 
     switch (g.phase) {
+      case "count":
+        g.phaseT += dt;
+        const step = Math.min(3, Math.floor(g.phaseT));   // 1s per digit, GO for the last 0.35s
+        if (step !== g.countStep) { g.countStep = step; countdownBeep(step); }   // shared beeps from game.js
+        if (g.phaseT >= cfg.countMs) beginPlay();
+        break;
       case "play":
         g.acc += dt * 1000;
         while (g.acc >= g.tickMs) { g.acc -= g.tickMs; tickMini(); }
@@ -246,6 +262,7 @@
     if (g.alive || flash) drawSnake(flash);
     drawParticles();
     hud();
+    if (g.phase === "count") drawCountBanner(Math.max(0, g.countStep));
     if (g.phase === "fade") {
       ctx.fillStyle = `rgba(6,3,12,${Math.min(1, g.fade / GAME_CONFIG.mini.fadeMs)})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -320,6 +337,19 @@
     ctx.fillStyle = "#b9a6d8";
     ctx.fillText("P PAUSE   ESC QUIT", canvas.width / 2, g.oy + g.gh * g.cell + 14);
     ctx.textAlign = "left";
+  }
+
+  // entry countdown digit over the mini board — same look as game.js's
+  // resume banner: yellow digits pulsing, cyan "GO!" at the end
+  function drawCountBanner(step) {
+    const label = step >= 3 ? "GO!" : String(3 - step);
+    ctx.globalAlpha = step >= 3 ? 1 : 0.8 + 0.2 * Math.sin((g.phaseT % 1) * Math.PI);
+    ctx.fillStyle = step >= 3 ? "#7cf2ff" : "#ffd36e";
+    ctx.font = "24px 'Press Start 2P', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(label, canvas.width / 2, canvas.height / 2 + 10);
+    ctx.textAlign = "left";
+    ctx.globalAlpha = 1;
   }
 
   /* ---- particles ---- */
@@ -420,6 +450,7 @@
     fx: () => g && g.fx,
     turn: d => { if (g && g.phase === "play") g.queue.push(d); },
     step: () => tickMini(),               // advance one mini tick directly
+    skipCountdown: () => { if (g && g.phase === "count") beginPlay(); },   // tests: jump past the entry countdown
     placeApple: (x, y) => {
       if (!g) return;
       if (g.apples.length) { g.apples[0].x = x; g.apples[0].y = y; }

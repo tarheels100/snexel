@@ -98,9 +98,11 @@ function drive(pred, max) {
   return pred();
 }
 
-// ---- E from the title: takeover, main menu untouched ----
+// ---- E from the title: takeover, main menu untouched, entry countdown first ----
 key('KeyE');
-out.push('entry menu: state=' + state + ' active=' + MiniGame.isActive() + ' phase=' + D.phase() + ' (expect minigame true play)');
+out.push('entry menu: state=' + state + ' active=' + MiniGame.isActive() + ' phase=' + D.phase() + ' (expect minigame true count)');
+out.push('count gates music: start=' + !D.musicEvents().includes('start') + ' (expect true)');
+MiniGame.debug.skipCountdown();
 out.push('music stub: start=' + D.musicEvents().includes('start') + ' playing=' + MiniGame.music.playing + ' (expect true true)');
 const g0 = D.grid();
 out.push('grid: ' + JSON.stringify(g0) + ' (expect ox=68 oy=48 gw=20 gh=16 cell=6)');
@@ -135,6 +137,7 @@ out.push('countdown resume: state=' + drive(() => state === "menu", 400) + ' pen
 
 // ---- P pause freezes the mini world ----
 key('KeyE');
+MiniGame.debug.skipCountdown();
 const lenA = D.len(), scoreA = D.score(), posA = JSON.stringify(D.cells()[0]);
 key('KeyP');
 for (let i = 0; i < 4; i++) MiniGame.frame(0.2);
@@ -154,6 +157,7 @@ wrapMode = true;                       // main wrap ON must NOT leak into the mi
 key('Digit1');
 const scoreMain = players[0].score, lenMain = players[0].cells.length, tickMsMain = tickMs, accMain = acc;
 key('KeyE');
+MiniGame.debug.skipCountdown();
 const sn = D.cells();
 sn.splice(0, sn.length, { x: 0, y: 8 }, { x: 1, y: 8 }, { x: 2, y: 8 });
 D.setDir('l');
@@ -168,6 +172,7 @@ out.push('death exit: state=' + state + ' reason=' + D.lastReason() + ' wrapKept
 
 // ---- self-collision death ----
 key('Escape'); key('KeyE');
+MiniGame.debug.skipCountdown();
 const sn2 = D.cells();
 sn2.splice(0, sn2.length, { x: 2, y: 3 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 3, y: 3 });
 D.setDir('d');                            // head (2,3) steps onto body slot (2,4) — not the tail
@@ -188,7 +193,10 @@ drive(() => state === "menu", 400);
 
 // ---- main keyboard is ignored during the mini-game ----
 key('KeyE');
-const dirBefore = D.dir();
+key('ArrowUp');                          // ignored during the entry countdown
+MiniGame.frame(0.13);
+out.push('steer during count: dir=' + D.dir() + ' head=' + JSON.stringify(D.cells()[0]) + ' (expect r {10,8})');
+MiniGame.debug.skipCountdown();
 key('ArrowUp');                          // must steer the MINI, not the main game
 out.push('keys: miniDir=' + D.dir() + ' mainDir=' + players[0].dir + ' (mini may turn u, main stays r)');
 MiniGame.frame(0.13);
@@ -201,6 +209,7 @@ drive(() => state === "menu", 400);
 const fake = { playing: false, log: [], start() { this.playing = true; this.log.push('start'); }, stop() { this.playing = false; this.log.push('stop'); }, setVolume(v) { this.log.push('vol:' + v); }, setIntensity(x) { this.log.push('int:' + x); }, gameOver() { this.log.push('gameOver'); }, eat() { this.log.push('eat'); }, win() { this.log.push('win'); } };
 MiniGame.setMusic(fake);
 MiniGame.start({ onDone: () => {} });    // direct start — game.js's enterMiniGame would setMusic(null) here
+MiniGame.debug.skipCountdown();
 head = D.cells()[0];
 D.placeApple(head.x + 1, head.y);
 MiniGame.frame(0.13);
@@ -211,6 +220,7 @@ out.push('swap done: active=' + MiniGame.isActive() + ' (expect false)');
 
 // ---- regression: reversed steers must NOT kill (handler + tick guards) ----
 key('KeyE');                              // fresh mini from title, snake heads right
+MiniGame.debug.skipCountdown();           // past the entry countdown
 key('ArrowLeft');                         // 180° reversal — must be ignored
 MiniGame.frame(0.13);
 out.push('reversal: dir=' + D.dir() + ' alive=' + D.alive() + ' head=' + JSON.stringify(D.cells()[0]) + ' (expect r true {11,8})');
@@ -262,7 +272,7 @@ for (let i = 0; i < 3; i++) {             // 3 apple bites hatch a baby at the e
   tick();
 }
 const bb = EggBaby.debug.baby();
-out.push('hatch e2e: baby=' + (bb ? 'len' + bb.cells.length : 'none') + ' score=' + players[0].score + ' (expect len3, 3)');
+out.push('hatch e2e: baby=' + (bb ? 'len' + bb.cells.length : 'none') + ' score=' + players[0].score + ' banner=' + (EggBaby.debug.banner() > 0) + ' (expect len3, 3, true)');
 players[0].cells = [{ x: bb.cells[0].x - 1, y: bb.cells[0].y }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
 players[0].dir = 'r';
 tick();                                   // head steps onto the baby's head cell → capture
@@ -271,7 +281,9 @@ drive(() => state === "minigame", 50);    // game.js loop consumes takeHandoff �
 out.push('handoff: state=' + state + ' miniActive=' + MiniGame.isActive() + ' engine=' + (jaunty ? 'yes' : 'no') +
          ' start=' + (jaunty && jaunty.logs.includes('start')) + ' hudDim=' + canvasStub.style.opacity +
          ' overlayHidden=' + !canvasStub.classList.has("show") +
-         ' mainSilent=' + (musicGain && musicGain.gain.value === 0) + ' (expect minigame true yes true 0.4 true true)');
+         ' mainSilent=' + (musicGain && musicGain.gain.value === 0) + ' (expect minigame true yes false 0.4 true true)');
+MiniGame.debug.skipCountdown();           // jump past the entry countdown → GO
+out.push('mini GO: start=' + jaunty.logs.includes('start') + ' phase=' + D.phase() + ' (expect true play)');
 key('KeyZ');
 out.push('Z during mini: volMute=' + jaunty.logs.includes('vol:0') + ' (expect true)');
 key('KeyZ');

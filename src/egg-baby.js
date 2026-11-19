@@ -23,6 +23,7 @@
   let bitesSinceEgg = 0;   // apples eaten while the egg waits
   let captureAt = 0;       // ding timestamp (debug/tests)
   let pendingHandoff = false;   // set on capture; game.js consumes via takeHandoff()
+  let hatchBanner = 0;          // seconds left of the "Catch me if you can!" flash
 
   /* ---- sprites & palettes ---- */
 
@@ -98,18 +99,21 @@
     }
     baby = { cells, dir, acc: 0 };
     bitesSinceEgg = 0;
+    hatchBanner = GAME_CONFIG.egg.bannerMs;   // taunt flash, decayed by updateBaby
     hatchBurst(e.x, e.y);
     hatchPop();
   }
 
   function resetEggBaby() {
     eggs = []; baby = null; bitesSinceEgg = 0; captureAt = 0;
+    hatchBanner = 0;
     pendingHandoff = false;
   }
 
   /* ---- baby movement + AI ---- */
 
   function updateBaby(dt, tickMs) {
+    hatchBanner = Math.max(0, hatchBanner - dt);   // flash decays even if the baby vanishes mid-flash
     if (!baby || state !== "playing" || mode !== 1) return;
     const step = tickMs * GAME_CONFIG.egg.babySpeedMul;   // slower than the main snake
     baby.acc += dt * 1000;
@@ -208,6 +212,17 @@
       ctx.fillRect(px + s - 1, py, 1, s);
       if (i === 0) drawBabyEyes(px, py, baby.dir);
     });
+    // hatch taunt: "CATCH ME IF YOU CAN!" blinking over the board, fading out
+    if (hatchBanner > 0) {
+      const dur = GAME_CONFIG.egg.bannerMs;
+      ctx.globalAlpha = Math.min(1, hatchBanner / (dur * 0.35)) * (0.8 + 0.2 * Math.sin(performance.now() / 90));
+      ctx.fillStyle = BABY.light;
+      ctx.font = "12px 'Press Start 2P', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("CATCH ME IF YOU CAN!", canvas.width / 2, canvas.height / 2 + 10);
+      ctx.textAlign = "left";
+      ctx.globalAlpha = 1;
+    }
   }
 
   function drawBabyEyes(px, py, dir) {
@@ -327,6 +342,7 @@
       captureAt: () => captureAt,
       bites: () => bitesSinceEgg,
       handoff: () => pendingHandoff,
+      banner: () => hatchBanner,
     },
   };
   // classic-script namespace, same pattern as window.ChillMusic. Also set on

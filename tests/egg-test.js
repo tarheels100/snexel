@@ -60,6 +60,9 @@ for (let i = 0; i < 3; i++) {
 }
 const b = EggBaby.debug.baby();
 out.push('hatch: eggs=' + EggBaby.debug.eggs().length + ' baby=' + (b ? 'len' + b.cells.length : 'none') + ' bites=' + EggBaby.debug.bites() + ' score=' + players[0].score + ' (expect 0 eggs, len3, bites0, score3)');
+out.push('hatch banner flash: ' + (EggBaby.debug.banner() > 0) + ' (expect true)');
+EggBaby.updateBaby(2, 130);               // dt-driven decay of the taunt flash
+out.push('banner decayed: ' + (EggBaby.debug.banner() === 0) + ' (expect true)');
 
 // ---- M2: avoidance — 200 steps, never touches snake/food/wall ----
 box.v = 0.99;                       // no jitter picks; deterministic legal move
