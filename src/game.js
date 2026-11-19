@@ -598,8 +598,8 @@ function initOptions() {
       <div class="ov-title">OPTIONS</div>
       <div class="ov-sub">MODES &amp; AUDIO</div>
       <div class="ov-lines">
-        <div><span class="key">3</span>MODE #2 — <span class="${poopMode ? "g" : "dimc"}">POOP MODE ${poopMode ? "ON" : "OFF"}</span></div>
-        <div><span class="key">4</span>MODE #3 — <span class="${wrapMode ? "g" : "dimc"}">WRAP MODE ${wrapMode ? "ON" : "OFF"}</span> — edges are portals</div>
+        <div><span class="key">3</span>MODE #2 — <span class="${poopMode ? "g" : "dimc"}">${poopMode ? "ON" : "OFF"}</span></div>
+        <div><span class="key">4</span>WRAP MODE — <span class="${wrapMode ? "g" : "dimc"}">${wrapMode ? "ON" : "OFF"}</span> — edges are portals</div>
         <div><span class="key">Z</span>MUSIC — <span class="${musicMuted ? "dimc" : "g"}">${musicMuted ? "MUTED" : "ON"}</span></div>
         <div><span class="key">X</span>SFX — <span class="${sfxMuted ? "dimc" : "g"}">${sfxMuted ? "MUTED" : "ON"}</span></div>
         <div><span class="key">T</span>TRACK — <span class="${track === "retro" ? "g" : "dimc"}">RETRO CHIP</span> / <span class="${track === "chill" ? "g" : "dimc"}">CHILL AMBIENCE</span></div>
@@ -1074,14 +1074,14 @@ function gameOver() {
   const causeText = c => ({
     wall: "hit the wall",
     body: "crashed into a snake",
-    poop: "ran over a poop pile",
+    poop: "ran into a pile-up",
     crash: "head-on-head collision",
     boom: "blasted by a pineapple",
     banana: "caught in a banana blast",
   }[c] || "crashed");
   if (players.length === 1) {
     msg = `<div class="ov-score">SCORE&nbsp;<span class="g">${players[0].score}</span> — LENGTH&nbsp;<span class="g">${players[0].cells.length}</span></div>`;
-    if (players[0].cause === "poop") note = `ran over its own poop`;
+    if (players[0].cause === "poop") note = `ran into its own pile-up`;
     else if (players[0].cause === "boom") note = `blasted by a pineapple`;
     else if (players[0].cause === "banana") note = `caught in a banana blast`;
   } else {

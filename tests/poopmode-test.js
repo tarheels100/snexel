@@ -27,12 +27,12 @@ function key(c) { handlers.keydown({ code: c, preventDefault: noop }); }
 key('Digit3');
 out.push('toggle ON: poopMode=' + poopMode + ' ls=' + store.snake_poop);
 key('KeyO');
-out.push('options shows ON: ' + overlay.innerHTML.includes('POOP MODE ON'));
+out.push('options shows ON: ' + (overlay.innerHTML.includes('MODE #2 — <span class="g">ON') && !overlay.innerHTML.includes('poop')));
 key('KeyO');   // back to title
 key('Digit3');
 out.push('toggle OFF: poopMode=' + poopMode + ' ls=' + store.snake_poop);
 key('KeyO');
-out.push('options shows OFF: ' + overlay.innerHTML.includes('POOP MODE OFF'));
+out.push('options shows OFF: ' + overlay.innerHTML.includes('MODE #2 — <span class="dimc">OFF'));
 key('KeyO');   // back to title
 key('Digit3'); // re-enable
 
@@ -60,7 +60,7 @@ players[0].cells.forEach((c, i) => { c.x = appleCell.x + 1 + i; c.y = appleCell.
 players[0].dir = 'l'; players[0].queue = [];
 tick();
 out.push('head onto revealed poop: alive=' + players[0].alive + ' cause=' + players[0].cause + ' state=' + state);
-out.push('game over note present: ' + overlay.innerHTML.includes('ran over its own poop'));
+out.push('game over note present: ' + overlay.innerHTML.includes('ran into its own pile-up'));
 
 // ---- 2P: P1 eats; pile reveals after P1's bulge pops; P2 then steps on it ----
 startGame(2);
@@ -82,7 +82,7 @@ players[0].cells.forEach((c, i) => { c.x = GW - 1 - i; c.y = 3; });
 players[0].dir = 'r'; players[0].queue = [];
 tick();
 out.push('P1 dies -> winner P1: state=' + state + ' overlay=' + overlay.innerHTML.includes('PLAYER 1 WINS'));
-out.push('loser note: ' + overlay.innerHTML.includes('P2 ran over a poop pile'));
+out.push('loser note: ' + overlay.innerHTML.includes('P2 ran into a pile-up'));
 
 // ---- death before bulge reaches tail: hidden pile uncovered silently ----
 startGame(1);

@@ -225,7 +225,7 @@ key('KeyO');                           // back to title
 
 // ---- wrap mode ----
 key('KeyO'); key('Digit4');
-out.push('wrap ON: ' + wrapMode + ' ls=' + store.snake_wrap + ' options shows: ' + el.overlay.innerHTML.includes('WRAP MODE ON'));
+out.push('wrap ON: ' + wrapMode + ' ls=' + store.snake_wrap + ' options shows: ' + el.overlay.innerHTML.includes('WRAP MODE — <span class="g">ON'));
 key('Escape');                         // back to menu
 startGame(1);
 players[0].cells.forEach((c, i) => { c.x = GW - 1 - i; c.y = 7; });
