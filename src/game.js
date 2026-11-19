@@ -91,7 +91,8 @@ const GAME_CONFIG = {
   // goal apples → fireworks → fade → handoff back (M4 adds countdown/reward).
   mini: { gw: 20, gh: 16, cell: 6, snakeLen: 3, goal: 10, apples: 2, grow: 1,
           tickMs: 130, winMs: 0.6, fxMs: 2.0, diedMs: 0.8, fadeMs: 0.5,
-          countMs: 3.35 },   // entry "3 2 1 GO!" (1s per digit + 0.35s GO), same as the resume countdown
+          countMs: 3.35,     // entry "3 2 1 GO!" (1s per digit + 0.35s GO), same as the resume countdown
+          shrink: 3 },       // mini-win reward: main snake loses this many tail segments
 };
 const cfg = () => (mode === 2 ? GAME_CONFIG.versus : GAME_CONFIG.solo);
 
@@ -531,8 +532,39 @@ function enterMiniGame() {
   MiniGame.setMusic(jaunty || null);      // null → silent stub until audio unlocks
   MiniGame.start({
     // M4: MiniGame fades out; game.js then runs the countdown before resuming.
-    onDone: () => { countdown = { t: 0, step: -1 }; },
+    // Winning the round pays out: the main snake sheds tail segments (reward:
+    // shorter snake = easier board). onDone receives "won"|"wall"|"body"|"skipped".
+    onDone: (reason) => {
+      if (reason === "won") shrinkMainSnake(GAME_CONFIG.mini.shrink);
+      countdown = { t: 0, step: -1 };
+    },
   });
+}
+
+// Mini-win reward: cut up to n segments off each living snake's tail (the
+// head is never cut). Segments removed mid-bulge surface any hidden pile
+// under them — same precedent as an explosion before the bulge reaches the
+// tail — and shed a small green puff where they detach.
+function shrinkMainSnake(n) {
+  for (const p of players) {
+    if (!p.alive) continue;
+    const cut = Math.min(n, p.cells.length - 1);
+    if (cut <= 0) continue;
+    for (const c of p.cells.slice(p.cells.length - cut)) {
+      if (c.bulge) revealPoop(c.x, c.y);
+      const cx = c.x * CELL + CELL / 2, cy = c.y * CELL + CELL / 2;
+      for (let k = 0; k < 3; k++) {
+        particles.push({
+          x: cx + (Math.random() - 0.5) * 4, y: cy + (Math.random() - 0.5) * 4,
+          vx: (Math.random() - 0.5) * 90, vy: (Math.random() - 0.5) * 90 - 30,
+          life: 0.3 + Math.random() * 0.3, max: 0.6, s: 2,
+          color: k === 0 ? PAL.white : p.pal.body[k % 2],
+        });
+      }
+    }
+    p.cells.splice(p.cells.length - cut, cut);
+    p.cells[0].bulge = false;   // any bulge run is gone with the cut tail
+  }
 }
 
 // egg-baby flagged a baby capture — announce it and jump into the mini-game.

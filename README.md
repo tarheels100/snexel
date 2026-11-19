@@ -44,7 +44,9 @@ All toggles persist in `localStorage` (keys `snake_poop`, `snake_wrap`,
   bites hatch a shy baby snake that dodges everything and freezes when
   cornered. Touching it hands off to a bright mini snake round (10 apples);
   win fireworks or forfeit, then a "3-2-1-GO!" countdown resumes the main
-  game exactly where it left off. The main track is fully muted during the
+  game exactly where it left off (the mini round opens with its own countdown
+  too). Winning the round sheds 3 segments off your main snake — a shorter
+  snake is the reward. The main track is fully muted during the
   mini round — JauntyMusic plays there instead.
 
 ## Music

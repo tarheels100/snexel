@@ -297,6 +297,21 @@ out.push('resume intact: state=' + state + ' score=' + players[0].score + ' len=
          ' musicBack=' + (musicGain.gain.value === 0.55) +
          ' pending=' + rafQueue.length + ' (expect playing 3 4 true 1 true >0)');
 
+// ---- M4 reward: winning the mini sheds 3 main snake segments ----
+key('KeyE');                              // debug entry mid-play (jaunty persists)
+MiniGame.debug.skipCountdown();
+const lenPre = players[0].cells.length;
+D.setScore(9);
+let hw = D.cells()[0];
+D.placeApple(hw.x + 1, hw.y);
+MiniGame.frame(0.13);                     // 10th apple → win
+out.push('mini win: phase=' + D.phase() + ' reason=' + D.reason() + ' jauntyWin=' + jaunty.logs.includes('win') + ' (expect win won true)');
+drive(() => !MiniGame.isActive(), 300);   // win+fireworks+fade → finish → shrink + countdown
+out.push('win shrink: len=' + players[0].cells.length + ' headKept=' + JSON.stringify(players[0].cells[0]) + ' (expect ' + (lenPre - 3) + ')');
+drive(() => state === "playing", 400);
+out.push('win resume: state=' + state + ' len=' + players[0].cells.length + ' score=' + players[0].score +
+         ' musicBack=' + (musicGain.gain.value === 0.55) + ' (expect playing ' + (lenPre - 3) + ' 3 true)');
+
 console.log(out.join('\\n'));
 `;
 
