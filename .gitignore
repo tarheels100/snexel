@@ -1,0 +1,14 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.log
+
+# Node artifacts (none needed to run the game or tests, but keep out just in case)
+node_modules/
+
+# scratch/debug files not part of the game
+combined.js
+tmp-*.js
+music-debug.js
+*.ps1
