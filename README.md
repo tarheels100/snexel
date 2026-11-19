@@ -1,10 +1,11 @@
 # Snexel — Slither & Chill
 
-**Snexel** (snek × pixel) is a retro pixel-art snake game in plain HTML/CSS/JS
-— no build tools, no dependencies (just a Google font with a local fallback).
-1–2 players, plus poop/wrap modes, bomb fruits, an egg→baby→mini-game
-pipeline, and three procedural chiptune music tracks (Web Audio, all
-synthesized live).
+Chill pixel art snake game with some fun twists.
+
+**Snexel** (snek × pixel) is built in plain HTML/CSS/JS — no build tools, no
+dependencies (just a Google font with a local fallback). 1–2 players, plus
+poop/wrap modes, bomb fruits, an egg→baby→mini-game pipeline, and three
+procedural chiptune music tracks (Web Audio, all synthesized live).
 
 ## Run it
 
@@ -90,3 +91,7 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
 - CPU-controlled snake for versus mode (`cpu-snake-plan.md`)
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)
+
+## License
+
+MIT — see `LICENSE`.
