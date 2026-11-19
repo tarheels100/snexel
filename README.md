@@ -59,6 +59,7 @@ Three Web Audio engines, all classic scripts sharing one AudioContext:
 ```
 index.html      page + overlay/HUD
 styles.css      pixel styling, scanlines
+assets/         favicons (SVG + ICO w/ 16 & 32 PNGs + apple-touch 180)
 src/            game.js, egg-baby.js, minigame.js, chiptune-music.js, jaunty-music.js
 tests/          node sandbox suites (vm-based, no framework)
 docs/        	  design plans + an integration example
