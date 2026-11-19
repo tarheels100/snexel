@@ -1,9 +1,10 @@
-# Pixel Snake
+# Snexel — Slither & Chill
 
-A retro pixel-art snake game in plain HTML/CSS/JS — no build tools, no
-dependencies (just a Google font with a local fallback). 1–2 players, plus
-poop/wrap modes, bomb fruits, an egg→baby→mini-game pipeline, and three
-procedural chiptune music tracks (Web Audio, all synthesized live).
+**Snexel** (snek × pixel) is a retro pixel-art snake game in plain HTML/CSS/JS
+— no build tools, no dependencies (just a Google font with a local fallback).
+1–2 players, plus poop/wrap modes, bomb fruits, an egg→baby→mini-game
+pipeline, and three procedural chiptune music tracks (Web Audio, all
+synthesized live).
 
 ## Run it
 

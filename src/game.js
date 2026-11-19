@@ -1,7 +1,7 @@
 "use strict";
 
 /* ------------------------------------------------------------------ *
- *  Pixel-art Snake — 1 or 2 players
+ *  Snexel — pixel-art snake (snek × pixel), 1 or 2 players
  * ------------------------------------------------------------------ */
 
 const GW = 32, GH = 24, CELL = 8;          // 32x24 board, 8px per cell
@@ -499,8 +499,8 @@ function initMenu() {
   el.best.textContent = best;
   showOverlay(`
     <div class="ov-inner">
-      <div class="ov-title">SNAKE</div>
-      <div class="ov-sub">PIXEL EDITION</div>
+      <div class="ov-title">SNEXEL</div>
+      <div class="ov-sub">Slither &amp; Chill</div>
       <div class="ov-lines">
         <div><span class="key">1</span><span class="g">1 PLAYER</span></div>
         <div><span class="key">2</span><span class="o">2 PLAYERS</span> — WASD vs ARROWS</div>
