@@ -12,3 +12,4 @@ combined.js
 tmp-*.js
 music-debug.js
 *.ps1
+artifacts/

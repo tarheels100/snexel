@@ -138,10 +138,14 @@ the plan's corner-overlay pads were replaced by pads OUTSIDE the board —
   deterministic in vm tests via a real `setTimeout`.
 - Player colors moved to the `.dpad` level so buttons AND ghost inherit via
   `currentColor` (`border: 2px solid currentColor`).
-- Glyphs carry U+FE0E (variation selector-15): Android's emoji font otherwise
-  hijacks ▲◀▶▼/✕ into black emoji that ignore CSS `color` — device report
-  said pads rendered black; FE0E forces the text presentation (touch.js?v=4,
-  index.html markup entities `&#9650;&#xFE0E;` etc).
+- Glyph hijack fix (two device reports): ▲◀▶▼/✕ have emoji presentation
+  variants and Chrome/Android paints them black, ignoring CSS `color`. The
+  VS15 fix (U+FE0E) colored the JS-set ghost but NOT the HTML buttons —
+  Chrome's variation-selector support is unreliable. Final fix (touch.js?v=5,
+  styles.css?v=12, index.html entities `&#8593;` etc): plain arrows ↑←→↓
+  (U+2190..2193) + ✕ have NO emoji variant at all, and .tbtn/.tghost/.tchip
+  get an explicit stack `"Press Start 2P", Roboto, "Noto Sans", sans-serif`
+  (PS2P lacks arrow glyphs; Roboto/Noto render them as colored text).
 - `MiniGame.debug.turnQueue()` getter added (v7) — the routing proof; `turn(d)`
   stays the test-only push setter.
 - `touch-test.js`: 34 checks, TWO sandboxes — touch-enabled (fake DOM: crt /

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <div class="game">
@@ -34,20 +34,20 @@
       <div class="touch-layer">
         <div class="dpad p1">
           <span class="tghost" id="t-ghost-0"></span>
-          <button class="tbtn up"    data-pad="0" data-dir="u" aria-label="Player 1 up">&#9650;&#xFE0E;</button>
-          <button class="tbtn left"  data-pad="0" data-dir="l" aria-label="Player 1 left">&#9664;&#xFE0E;</button>
-          <button class="tbtn right" data-pad="0" data-dir="r" aria-label="Player 1 right">&#9654;&#xFE0E;</button>
-          <button class="tbtn down"  data-pad="0" data-dir="d" aria-label="Player 1 down">&#9666;&#xFE0E;</button>
+          <button class="tbtn up"    data-pad="0" data-dir="u" aria-label="Player 1 up">&#8593;</button>
+          <button class="tbtn left"  data-pad="0" data-dir="l" aria-label="Player 1 left">&#8592;</button>
+          <button class="tbtn right" data-pad="0" data-dir="r" aria-label="Player 1 right">&#8594;</button>
+          <button class="tbtn down"  data-pad="0" data-dir="d" aria-label="Player 1 down">&#8595;</button>
         </div>
         <div class="dpad p2">
           <span class="tghost" id="t-ghost-1"></span>
-          <button class="tbtn up"    data-pad="1" data-dir="u" aria-label="Player 2 up">&#9650;&#xFE0E;</button>
-          <button class="tbtn left"  data-pad="1" data-dir="l" aria-label="Player 2 left">&#9664;&#xFE0E;</button>
-          <button class="tbtn right" data-pad="1" data-dir="r" aria-label="Player 2 right">&#9654;&#xFE0E;</button>
-          <button class="tbtn down"  data-pad="1" data-dir="d" aria-label="Player 2 down">&#9666;&#xFE0E;</button>
+          <button class="tbtn up"    data-pad="1" data-dir="u" aria-label="Player 2 up">&#8593;</button>
+          <button class="tbtn left"  data-pad="1" data-dir="l" aria-label="Player 2 left">&#8592;</button>
+          <button class="tbtn right" data-pad="1" data-dir="r" aria-label="Player 2 right">&#8594;</button>
+          <button class="tbtn down"  data-pad="1" data-dir="d" aria-label="Player 2 down">&#8595;</button>
         </div>
         <button class="tchip" id="t-pause" data-action="pause" aria-label="Pause">P</button>
-        <button class="tchip quit" id="t-quit" data-action="quit" aria-label="Forfeit mini-game">&#10006;&#xFE0E;</button>
+        <button class="tchip quit" id="t-quit" data-action="quit" aria-label="Forfeit mini-game">&#10006;</button>
       </div>
 
       <div class="overlay" id="overlay"></div>
@@ -64,6 +64,6 @@
   <script src="src/egg-baby.js?v=4"></script>
   <!-- mini-game engine (M3): own loop + keyboard while active; namespace on window.MiniGame -->
   <script src="src/minigame.js?v=7"></script>
-  <script src="src/touch.js?v=4"></script>
+  <script src="src/touch.js?v=5"></script>
 </body>
 </html>
