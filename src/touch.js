@@ -26,8 +26,21 @@
 (function () {
   const enabled = !!(window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches);
 
+  // last-tap ghost: the pad's center cell briefly shows the arrow you just
+  // tapped, fading over ~600ms (opacity decayed by syncChips' 120ms poll).
+  const GLYPH = { u: "▲", d: "▼", l: "◀", r: "▶" };
+  const lastTap = [null, null];      // {dir, t} per pad — debug-readable
+  let ghostEls = [null, null];       // bound to the DOM when enabled
+
+  function markGhost(padIdx, dir) {
+    lastTap[padIdx] = { dir, t: Date.now() };
+    const g = ghostEls[padIdx];
+    if (g) { g.textContent = GLYPH[dir] || ""; g.style.opacity = "1"; }
+  }
+
   // hoisted routing functions (debug API works even when disabled)
   function steerPad(padIdx, dir) {
+    markGhost(padIdx, dir);
     if (state === "minigame") { if (window.MiniGame) MiniGame.touchSteer(dir); return; }
     if (state !== "playing") return;
     steerPlayer(mode === 2 ? padIdx : 0, dir);
@@ -52,11 +65,18 @@
     if (layer) layer.classList.toggle("idle", !driving);
     if (pauseChip) pauseChip.classList.toggle("on", driving);
     if (quitChip) quitChip.classList.toggle("on", inMini && MiniGame.isActive());
+    for (let i = 0; i < 2; i++) {
+      const g = ghostEls[i];
+      if (!g) continue;
+      const last = lastTap[i];
+      const k = !driving || !last ? 0 : 1 - (Date.now() - last.t) / 600;
+      g.style.opacity = k > 0 ? String(k.toFixed(2)) : "0";
+    }
   }
 
   const T = {
     enabled,
-    debug: { enabled, steerPad, tapKey, chipPause, chipQuit, syncChips },
+    debug: { enabled, steerPad, tapKey, chipPause, chipQuit, syncChips, markGhost, lastTap },
   };
   window.TouchControls = T;
   globalThis.TouchControls = T;   // bare `TouchControls` in vm test sandboxes
@@ -65,6 +85,7 @@
 
   const crt = document.querySelector(".crt");
   const layer = document.querySelector(".touch-layer");
+  ghostEls = [document.getElementById("t-ghost-0"), document.getElementById("t-ghost-1")];
   const pauseChip = document.getElementById("t-pause");
   const quitChip = document.getElementById("t-quit");
 

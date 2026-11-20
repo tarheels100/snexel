@@ -453,6 +453,7 @@
     apples: () => g && g.apples,
     fx: () => g && g.fx,
     turn: d => { if (g && g.phase === "play") g.queue.push(d); },
+    turnQueue: () => g && g.queue.slice(),   // pending turns (touch-test routing proof)
     step: () => tickMini(),               // advance one mini tick directly
     skipCountdown: () => { if (g && g.phase === "count") beginPlay(); },   // tests: jump past the entry countdown
     placeApple: (x, y) => {

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <div class="game">
@@ -33,12 +33,14 @@
            Solo: both pads steer P1. Versus: left = P1, right = P2. -->
       <div class="touch-layer">
         <div class="dpad p1">
+          <span class="tghost" id="t-ghost-0"></span>
           <button class="tbtn up"    data-pad="0" data-dir="u" aria-label="Player 1 up">▲</button>
           <button class="tbtn left"  data-pad="0" data-dir="l" aria-label="Player 1 left">◀</button>
           <button class="tbtn right" data-pad="0" data-dir="r" aria-label="Player 1 right">▶</button>
           <button class="tbtn down"  data-pad="0" data-dir="d" aria-label="Player 1 down">▼</button>
         </div>
         <div class="dpad p2">
+          <span class="tghost" id="t-ghost-1"></span>
           <button class="tbtn up"    data-pad="1" data-dir="u" aria-label="Player 2 up">▲</button>
           <button class="tbtn left"  data-pad="1" data-dir="l" aria-label="Player 2 left">◀</button>
           <button class="tbtn right" data-pad="1" data-dir="r" aria-label="Player 2 right">▶</button>
@@ -61,7 +63,7 @@
   <!-- egg/baby pipeline: classic script AFTER game.js (shared global scope, namespace on window.EggBaby) -->
   <script src="src/egg-baby.js?v=4"></script>
   <!-- mini-game engine (M3): own loop + keyboard while active; namespace on window.MiniGame -->
-  <script src="src/minigame.js?v=6"></script>
-  <script src="src/touch.js?v=2"></script>
+  <script src="src/minigame.js?v=7"></script>
+  <script src="src/touch.js?v=3"></script>
 </body>
 </html>

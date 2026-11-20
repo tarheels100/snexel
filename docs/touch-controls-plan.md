@@ -114,6 +114,7 @@ styles.css?v=8, index.html):**
   `debug.{enabled, steerPad, tapKey, chipPause, chipQuit, syncChips}`.
 - Listeners install only when `matchMedia("(hover: none) and (pointer: coarse)")`
   matches; tests don't load touch.js yet (Stage 3 adds `touch-test.js`).
+  (Shipped in Stage 3: touch-test.js loads game+egg+mini+touch in one vm scope.)
 
 **Placement revision (post-device-test, styles.css?v=10 + touch.js?v=2):**
 the plan's corner-overlay pads were replaced by pads OUTSIDE the board —
@@ -128,7 +129,28 @@ the plan's corner-overlay pads were replaced by pads OUTSIDE the board —
   countdown): `syncChips` toggles `.idle` on the layer; chips keep their own
   logic, and overlay taps still press menu/rematch/resume.
 
-### Stage 3 — presentation + tests (~2h)
+### Stage 3 — presentation + tests (~2h) ✅ IMPLEMENTED
+
+**Implementation notes (shipped: touch.js?v=3, minigame.js?v=7, styles.css?v=11, index.html):**
+- Ghost is the pad's EMPTY CENTER CELL (`.tghost`, grid-area 2/2): the tapped
+  arrow glyph appears there and `syncChips` (120ms poll) decays
+  `style.opacity` over ~600ms — no CSS animation/rAF needed, and the decay is
+  deterministic in vm tests via a real `setTimeout`.
+- Player colors moved to the `.dpad` level so buttons AND ghost inherit via
+  `currentColor` (`border: 2px solid currentColor`).
+- `MiniGame.debug.turnQueue()` getter added (v7) — the routing proof; `turn(d)`
+  stays the test-only push setter.
+- `touch-test.js`: 34 checks, TWO sandboxes — touch-enabled (fake DOM: crt /
+  layer / chips / ghosts, delegated pointerdown with per-selector `closest()`)
+  and desktop (matchMedia false + a `document` Proxy trap proving ZERO DOM
+  access). Covers: listener wiring, menu/options/game-over row taps incl.
+  preventDefault, solo both-pads→P1, versus pad→player, reversal guards
+  (queue-relative — legal `u→l` chains pass, `r` after queued `l` dies),
+  mini routing + mini pause/forfeit + countdown board-tap skip (`miniFrom`
+  forced since `MiniGame.start` is called directly), syncChips idle/chip
+  visibility across menu/play/mini/over, ghost lit→faded on a real clock,
+  keyboard regression through the extracted `handleKeyDown`/`steerPlayer`.
+- Real-verification of visuals still needs the manual mobile checklist below.
 
 - Active state: brighter fill, 1px pixel "press" offset, player-colored border;
   a fading ghost of the last pressed arrow so mis-taps are legible.

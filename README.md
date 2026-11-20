@@ -34,7 +34,9 @@ On touch devices (phones/tablets) the keyboard hint is replaced by thumb
 D-pads placed *outside* the board — below it in portrait, to its sides in
 landscape: left pad = P1, right pad = P2 (solo: either pad steers P1), plus
 a pause chip on the board, a mini-game forfeit chip, and tap-to-press
-overlay rows. Desktop never shows or wires them (media-query detection).
+overlay rows. Each pad's center cell flashes a fading ghost of the arrow you
+tapped (mis-taps stay legible). Desktop never shows or wires them
+(media-query detection).
 
 ## Features
 
@@ -93,6 +95,7 @@ node tests/sound-test.js      # SFX + music integration spies
 node tests/engine-test.js     # ChillMusic engine against fake AudioContext
 node tests/egg-test.js        # egg/baby lifecycle + AI
 node tests/mini-test.js       # mini-game incl. M4 handoff/countdown/resume
+node tests/touch-test.js      # touch routing incl. guards, chips, ghosts, desktop-off
 ```
 
 Each prints `label=value (expect …)` lines — compare against the expectations.
@@ -102,7 +105,7 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
 - CPU-controlled snake for versus mode (`cpu-snake-plan.md`)
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
-  — stages 1–2 shipped; stage 3: press visuals, swipe steering, `touch-test.js`
+  — stages 1–3 shipped; stage 4 (optional): swipe steering, orientation hint, haptics
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)
 
 ## License

@@ -234,7 +234,7 @@ canvas {
 .dpad.p2 { right: 8px; }
 
 .tbtn {
-  border: 2px solid;
+  border: 2px solid currentColor;
   background: rgba(12, 14, 24, .38);   /* translucent: snakes stay visible under pads */
   font-family: inherit; font-size: 14px; line-height: 1;
   padding: 0; border-radius: 0; outline: none; cursor: default;
@@ -244,9 +244,20 @@ canvas {
 .tbtn.left  { grid-area: 2 / 1; }
 .tbtn.right { grid-area: 2 / 3; }
 .tbtn.down  { grid-area: 3 / 2; }
-.dpad.p1 .tbtn { border-color: var(--p1); color: var(--p1); }
-.dpad.p2 .tbtn { border-color: var(--p2); color: var(--p2); }
+/* player colors live on the cross so buttons AND the center ghost inherit */
+.dpad.p1 { left: 8px; color: var(--p1); }
+.dpad.p2 { right: 8px; color: var(--p2); }
 .tbtn:active { background: rgba(12, 14, 24, .78); transform: translateY(1px); }
+
+/* center cell: fading ghost of the last arrow tapped on this pad
+   (opacity is decayed by TouchControls.syncChips over ~600ms) */
+.tghost {
+  grid-area: 2 / 2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1;
+  color: currentColor; opacity: 0;
+  pointer-events: none;
+}
 
 /* tight phones: shrink the cross so both pads fit a ~300px board */
 @media (hover: none) and (pointer: coarse) and (max-width: 340px) {
