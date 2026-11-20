@@ -196,8 +196,10 @@ canvas {
   .ov-score { font-size: 8px; line-height: 2; margin-bottom: 10px; }
   .ov-note { margin-top: 12px; font-size: 7px; }
 
-  /* Stage 2: pads appear here (base rule hides them everywhere else). */
-  .touch-layer { display: block; }
+  /* Stage 2: pads appear here. Selector is .crt .touch-layer (0,2,0) so it
+   * beats the base .touch-layer { display:none } (0,1,0) no matter that the
+   * base rule appears later in the file. */
+  .crt .touch-layer { display: block; }
 }
 
 /* ------------------------------------------------------------------ */
