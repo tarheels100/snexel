@@ -28,17 +28,25 @@
 
   // last-tap ghost: the pad's center cell briefly shows the arrow you just
   // tapped, fading over ~600ms (opacity decayed by syncChips' 120ms poll).
-  // Plain arrows ↑←→↓ (U+2190..2193) have NO emoji presentation variant, so
-  // Android's emoji font never claims them — unlike ▲◀▶▼, which Chrome
-  // hijacks into black emoji even with U+FE0E (VS15) attached.
-  const GLYPH = { u: "↑", l: "←", r: "→", d: "↓" };
+  // Icons are inline SVG pixel arrows with NO fill attribute — CSS paints
+  // them per pad (styles.css). Device Chrome rendered every TEXT arrow
+  // character black regardless of font stack / emoji / variation selectors;
+  // SVG shapes are immune to fonts entirely.
+  const ARROW = {
+    u: "M3 0h2v1H3zM2 1h4v1H2zM1 2h6v1H1zM0 3h8v1H0zM3 4h2v4H3z",
+    d: "M3 7h2v1H3zM2 6h4v1H2zM1 5h6v1H1zM0 4h8v1H0zM3 0h2v4H3z",
+    l: "M0 3h1v2H0zM1 2h1v4H1zM2 1h1v6H2zM3 0h1v8H3zM4 3h4v2H4z",
+    r: "M7 3h1v2H7zM6 2h1v4H6zM5 1h1v6H5zM4 0h1v8H4zM0 3h4v2H0z",
+  };
+  const svgIcon = d => `<svg viewBox="0 0 8 8" aria-hidden="true"><path d="${d}"/></svg>`;
+  const GLYPH = { u: svgIcon(ARROW.u), d: svgIcon(ARROW.d), l: svgIcon(ARROW.l), r: svgIcon(ARROW.r) };
   const lastTap = [null, null];      // {dir, t} per pad — debug-readable
   let ghostEls = [null, null];       // bound to the DOM when enabled
 
   function markGhost(padIdx, dir) {
     lastTap[padIdx] = { dir, t: Date.now() };
     const g = ghostEls[padIdx];
-    if (g) { g.textContent = GLYPH[dir] || ""; g.style.opacity = "1"; }
+    if (g) { g.innerHTML = GLYPH[dir] || ""; g.style.opacity = "1"; }
   }
 
   // hoisted routing functions (debug API works even when disabled)

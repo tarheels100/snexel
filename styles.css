@@ -234,22 +234,25 @@ canvas {
 .dpad.p2 { right: 8px; }
 
 .tbtn {
-  border: 2px solid currentColor;
-  background: rgba(12, 14, 24, .38);   /* translucent: snakes stay visible under pads */
-  /* PS2P has no arrow glyphs; Roboto/Noto Sans supply them as TEXT — plain
-     ↑←→↓ have no emoji variant, so Android can't hijack them to black. */
-  font-family: "Press Start 2P", Roboto, "Noto Sans", sans-serif;
-  font-size: 16px; line-height: 1;
+  /* Explicit var() fills/borders per pad (NOT currentColor/inheritance —
+     Chrome/Android rendered inherited currentColor black on the device).
+     Icons are inline SVG pixel arrows: fonts and emoji can't touch them. */
+  display: flex; align-items: center; justify-content: center;
+  border: 3px solid var(--border);
+  background: rgba(12, 14, 24, .45);   /* translucent: snakes stay visible under pads */
   padding: 0; border-radius: 0; outline: none; cursor: default;
   user-select: none; -webkit-tap-highlight-color: transparent;
 }
+.tbtn svg    { display: block; width: 18px; height: 18px; }
 .tbtn.up    { grid-area: 1 / 2; }
 .tbtn.left  { grid-area: 2 / 1; }
 .tbtn.right { grid-area: 2 / 3; }
 .tbtn.down  { grid-area: 3 / 2; }
-/* player colors live on the cross so buttons AND the center ghost inherit */
-.dpad.p1 { left: 8px; color: var(--p1); }
-.dpad.p2 { right: 8px; color: var(--p2); }
+/* player colors: explicit per-pad rules (Stage 2 pattern, device-verified) */
+.dpad.p1 .tbtn { border-color: var(--p1); }
+.dpad.p2 .tbtn { border-color: var(--p2); }
+.dpad.p1 svg   { fill: var(--p1); }
+.dpad.p2 svg   { fill: var(--p2); }
 .tbtn:active { background: rgba(12, 14, 24, .78); transform: translateY(1px); }
 
 /* center cell: fading ghost of the last arrow tapped on this pad
@@ -257,17 +260,16 @@ canvas {
 .tghost {
   grid-area: 2 / 2;
   display: flex; align-items: center; justify-content: center;
-  font-family: "Press Start 2P", Roboto, "Noto Sans", sans-serif;
-  font-size: 20px; line-height: 1;
-  color: currentColor; opacity: 0;
+  opacity: 0;
   pointer-events: none;
 }
+.tghost svg { display: block; width: 24px; height: 24px; }
 
 /* tight phones: shrink the cross so both pads fit a ~300px board */
 @media (hover: none) and (pointer: coarse) and (max-width: 340px) {
   :root { --pad: 36px; }
-  .tbtn { font-size: 13px; }
-  .tghost { font-size: 16px; }
+  .tbtn svg   { width: 14px; height: 14px; }
+  .tghost svg { width: 18px; height: 18px; }
 }
 
 /* PORTRAIT touch: pads sit BELOW the board, in the corners of its width.
@@ -319,6 +321,8 @@ canvas {
   border-radius: 0; outline: none;
   user-select: none; -webkit-tap-highlight-color: transparent;
 }
+.tchip svg { width: 12px; height: 12px; fill: var(--ink); }
+.tchip.quit svg { fill: #ee2d2c; }
 .tchip.on { display: block; }
 .tchip.quit { right: 48px; border-color: #ee2d2c; color: #ee2d2c; }
 .tchip:active { background: rgba(12, 14, 24, .85); transform: translateY(1px); }

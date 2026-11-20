@@ -132,17 +132,17 @@ check('playing: pads active, pause chip on',
 
 // ---- solo: BOTH pads steer P1, reversal guard honored (vs LAST QUEUED dir) ----
 tapPad(0, 'u');
-check('solo pad0 queues P1 turn + lights ghost ↑',
-  jq(players[0].queue) === '["u"]' && ghost0.textContent.startsWith('↑') && ghost0.style.opacity === '1');
+check('solo pad0 queues P1 turn + lights ghost SVG up-arrow',
+  jq(players[0].queue) === '["u"]' && ghost0.innerHTML.includes('M3 0h2v1') && ghost0.style.opacity === '1');
 tapPad(1, 'd');
-check('solo pad1 reaches P1 (d rejected as reversal of queued u) + ghost ↓',
-  jq(players[0].queue) === '["u"]' && ghost1.textContent.startsWith('↓'));
+check('solo pad1 reaches P1 (d rejected as reversal of queued u) + ghost down SVG',
+  jq(players[0].queue) === '["u"]' && ghost1.innerHTML.includes('M3 7h2v1'));
 tapPad(1, 'l');
 check('pad1 legal l lands in P1 queue (proves pad1 -> solo P1 routing)',
-  jq(players[0].queue) === '["u","l"]' && ghost1.textContent.startsWith('←'));
+  jq(players[0].queue) === '["u","l"]' && ghost1.innerHTML.includes('M0 3h1v2'));
 tapPad(0, 'r');
-check('reversal (r after queued l) rejected, ghost → still marked',
-  jq(players[0].queue) === '["u","l"]' && ghost0.textContent.startsWith('→'));
+check('reversal (r after queued l) rejected, ghost right-arrow still marked',
+  jq(players[0].queue) === '["u","l"]' && ghost0.innerHTML.includes('M7 3h1v2'));
 players[0].queue.length = 0;
 tapRow('Escape');
 check('tap Esc row returns to title', state === 'menu');
