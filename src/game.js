@@ -505,10 +505,10 @@ function initMenu() {
       <div class="ov-title">SNEXEL</div>
       <div class="ov-sub">Slither &amp; Chill</div>
       <div class="ov-lines">
-        <div><span class="key">1</span><span class="g">1 PLAYER</span></div>
-        <div><span class="key">2</span><span class="o">2 PLAYERS</span> — WASD vs ARROWS</div>
+        <div data-key="Digit1"><span class="key">1</span><span class="g">1 PLAYER</span></div>
+        <div data-key="Digit2"><span class="key">2</span><span class="o">2 PLAYERS</span> — WASD vs ARROWS</div>
       </div>
-      <div class="ov-note"><span class="key">O</span>OPTIONS&nbsp; <span class="key">P</span>PAUSE&nbsp; <span class="key">Esc</span>MENU&nbsp; best: ${best}</div>
+      <div class="ov-note"><span class="key" data-key="KeyO">O</span>OPTIONS&nbsp; <span class="key">P</span>PAUSE&nbsp; <span class="key" data-key="Escape">Esc</span>MENU&nbsp; best: ${best}</div>
     </div>`);
 }
 
@@ -633,13 +633,13 @@ function initOptions() {
       <div class="ov-title">OPTIONS</div>
       <div class="ov-sub">MODES &amp; AUDIO</div>
       <div class="ov-lines">
-        <div><span class="key">3</span>MODE #2 — <span class="${poopMode ? "g" : "dimc"}">${poopMode ? "ON" : "OFF"}</span></div>
-        <div><span class="key">4</span>WRAP MODE — <span class="${wrapMode ? "g" : "dimc"}">${wrapMode ? "ON" : "OFF"}</span> — edges are portals</div>
-        <div><span class="key">Z</span>MUSIC — <span class="${musicMuted ? "dimc" : "g"}">${musicMuted ? "MUTED" : "ON"}</span></div>
-        <div><span class="key">X</span>SFX — <span class="${sfxMuted ? "dimc" : "g"}">${sfxMuted ? "MUTED" : "ON"}</span></div>
-        <div><span class="key">T</span>TRACK — <span class="${track === "retro" ? "g" : "dimc"}">RETRO CHIP</span> / <span class="${track === "chill" ? "g" : "dimc"}">CHILL AMBIENCE</span></div>
+        <div data-key="Digit3"><span class="key">3</span>MODE #2 — <span class="${poopMode ? "g" : "dimc"}">${poopMode ? "ON" : "OFF"}</span></div>
+        <div data-key="Digit4"><span class="key">4</span>WRAP MODE — <span class="${wrapMode ? "g" : "dimc"}">${wrapMode ? "ON" : "OFF"}</span> — edges are portals</div>
+        <div data-key="KeyZ"><span class="key">Z</span>MUSIC — <span class="${musicMuted ? "dimc" : "g"}">${musicMuted ? "MUTED" : "ON"}</span></div>
+        <div data-key="KeyX"><span class="key">X</span>SFX — <span class="${sfxMuted ? "dimc" : "g"}">${sfxMuted ? "MUTED" : "ON"}</span></div>
+        <div data-key="KeyT"><span class="key">T</span>TRACK — <span class="${track === "retro" ? "g" : "dimc"}">RETRO CHIP</span> / <span class="${track === "chill" ? "g" : "dimc"}">CHILL AMBIENCE</span></div>
       </div>
-      <div class="ov-note"><span class="key">Esc</span>BACK — toggles work anywhere, even mid-game</div>
+      <div class="ov-note"><span class="key" data-key="Escape">Esc</span>BACK — toggles work anywhere, even mid-game</div>
     </div>`);
 }
 
@@ -1153,7 +1153,7 @@ function gameOver() {
       <div class="ov-title">GAME OVER</div>
       ${msg}
       ${note ? `<div class="ov-note">${note}</div>` : ""}
-      <div class="ov-lines"><div><span class="key">↵</span>REMATCH &nbsp; <span class="key">Esc</span>MENU</div></div>
+      <div class="ov-lines"><div data-key="Enter"><span class="key">↵</span>REMATCH &nbsp; <span class="key" data-key="Escape">Esc</span>MENU</div></div>
     </div>`);
 }
 
@@ -1300,7 +1300,9 @@ const DIR_OF = {
   ArrowUp: "u", ArrowDown: "d", ArrowLeft: "l", ArrowRight: "r",
 };
 
-window.addEventListener("keydown", e => {
+// Keyboard input — extracted as a named function so touch.js can route taps
+// through the SAME logic (handleKeyDown({code})) instead of duplicating it.
+function handleKeyDown(e) {
   const code = e.code;
   ensureAudio();   // unlock audio on first keypress (browser gesture rule)
 
@@ -1383,7 +1385,7 @@ window.addEventListener("keydown", e => {
       state = "paused";
       setMusicVolume(0.22, 0.25);           // music ducks under the pause overlay
       showOverlay(`<div class="ov-inner"><div class="ov-title">PAUSED</div>
-        <div class="ov-lines"><div><span class="key">P</span>RESUME</div></div></div>`);
+        <div class="ov-lines"><div data-key="KeyP"><span class="key">P</span>RESUME</div></div></div>`);
     } else {
       initMenu();
     }
@@ -1401,20 +1403,26 @@ window.addEventListener("keydown", e => {
   const dir = DIR_OF[code];
   if (!dir) return;
 
-  const targets = [];
   if (mode === 1) {
-    targets.push(players[0]);               // WASD and arrows both control P1
+    steerPlayer(0, dir);                    // WASD and arrows both control P1
   } else {
-    if (code.startsWith("Key")) targets.push(players[0]);
-    if (code.startsWith("Arrow")) targets.push(players[1]);
+    if (code.startsWith("Key")) steerPlayer(0, dir);
+    if (code.startsWith("Arrow")) steerPlayer(1, dir);
   }
+}
+window.addEventListener("keydown", handleKeyDown);
 
-  for (const p of targets) {
-    if (!p.alive) continue;
-    const last = p.queue.length ? p.queue[p.queue.length - 1] : p.dir;
-    if (dir !== last && dir !== REV[last]) p.queue.push(dir);
-  }
-});
+// Shared steering for keyboard AND touch pads (touch.js): queue a turn for
+// player i with the no-reversal guard. The guard compares against the LAST
+// QUEUED direction (not p.dir) so rapid chains like u→l→d still work, while
+// a 180° reversal never enters the queue — it would drive the head into the
+// neck on the next tick.
+function steerPlayer(i, dir) {
+  const p = players[i];
+  if (!p || !p.alive) return;
+  const last = p.queue.length ? p.queue[p.queue.length - 1] : p.dir;
+  if (dir !== last && dir !== REV[last]) p.queue.push(dir);
+}
 
 // "LV n SPEED UP" banner over the board, fading out over ~1 second.
 function drawLevelBanner() {

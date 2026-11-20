@@ -30,6 +30,11 @@ Audio unlocks on the first key/click (browser autoplay policy).
 All toggles persist in `localStorage` (keys `snake_poop`, `snake_wrap`,
 `snake_music_muted`, `snake_sfx_muted`, `snake_track`, `snake_best`).
 
+On touch devices (phones/tablets) the keyboard is replaced by overlay thumb
+D-pads shown on the board: left pad = P1, right pad = P2 (solo: either pad
+steers P1), plus a pause chip, a mini-game forfeit chip, and tap-to-press
+overlay rows. Desktop never shows or wires them (media-query detection).
+
 ## Features
 
 - **Pixel board**: 256×192 canvas, 32×24 grid of 8px cells, checkerboard,
@@ -40,6 +45,9 @@ All toggles persist in `localStorage` (keys `snake_poop`, `snake_wrap`,
   `GAME_CONFIG` at the top of `src/game.js`.
 - **Special fruits**: pineapple (radius blast) and banana (row/column
   cross-fire) wipe terrain and, in versus, kill snakes caught in the blast.
+- **Touch controls (touch devices only)**: translucent thumb pads funnel
+  through the same steering guards as keyboard; detected via
+  `(hover: none) and (pointer: coarse)` — desktop stays keyboard-only.
 - **Egg → baby → mini-game (solo only)**: apple bites may roll an egg; 3
   bites hatch a shy baby snake that dodges everything and freezes when
   cornered. Touching it hands off to a bright mini snake round (10 apples);
@@ -63,7 +71,7 @@ Three Web Audio engines, all classic scripts sharing one AudioContext:
 index.html      page + overlay/HUD
 styles.css      pixel styling, scanlines
 assets/         favicons (SVG + ICO w/ 16 & 32 PNGs + apple-touch 180)
-src/            game.js, egg-baby.js, minigame.js, chiptune-music.js, jaunty-music.js
+src/            game.js, egg-baby.js, minigame.js, chiptune-music.js, jaunty-music.js, touch.js
 tests/          node sandbox suites (vm-based, no framework)
 docs/        	  design plans + an integration example
 ```
@@ -72,7 +80,7 @@ Scripts load as plain classic scripts (shared global scope), so keep unique
 top-level names across files — verify with:
 
 ```sh
-cat src/chiptune-music.js src/jaunty-music.js src/game.js src/egg-baby.js src/minigame.js | node --check /dev/stdin
+cat src/chiptune-music.js src/jaunty-music.js src/game.js src/egg-baby.js src/minigame.js src/touch.js | node --check /dev/stdin
 ```
 
 ## Tests
@@ -93,6 +101,7 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
 - CPU-controlled snake for versus mode (`cpu-snake-plan.md`)
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
+  — stages 1–2 shipped; stage 3: press visuals, swipe steering, `touch-test.js`
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)
 
 ## License

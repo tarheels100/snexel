@@ -195,4 +195,69 @@ canvas {
   .ov-lines .key, .ov-note .key { font-size: 8px; padding: 3px 6px; margin-right: 6px; }
   .ov-score { font-size: 8px; line-height: 2; margin-bottom: 10px; }
   .ov-note { margin-top: 12px; font-size: 7px; }
+
+  /* Stage 2: pads appear here (base rule hides them everywhere else). */
+  .touch-layer { display: block; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Touch pads & chips (stage 2 of docs/touch-controls-plan.md).        */
+/* Hidden by default — only the coarse-pointer media query above shows */
+/* them, and touch.js only wires listeners on touch devices.           */
+/* ------------------------------------------------------------------ */
+.touch-layer {
+  position: absolute;
+  inset: 0;
+  display: none;
+  pointer-events: none;   /* only the buttons below accept taps */
+}
+
+.dpad {
+  position: absolute;
+  bottom: 8px;
+  display: grid;
+  grid-template: repeat(3, 44px) / repeat(3, 44px);
+  pointer-events: auto;
+  touch-action: none;     /* no scroll/zoom while thumbing the pads */
+}
+.dpad.p1 { left: 8px; }
+.dpad.p2 { right: 8px; }
+
+.tbtn {
+  border: 2px solid;
+  background: rgba(12, 14, 24, .38);   /* translucent: snakes stay visible under pads */
+  font-family: inherit; font-size: 14px; line-height: 1;
+  padding: 0; border-radius: 0; outline: none; cursor: default;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.tbtn.up    { grid-area: 1 / 2; }
+.tbtn.left  { grid-area: 2 / 1; }
+.tbtn.right { grid-area: 2 / 3; }
+.tbtn.down  { grid-area: 3 / 2; }
+.dpad.p1 .tbtn { border-color: var(--p1); color: var(--p1); }
+.dpad.p2 .tbtn { border-color: var(--p2); color: var(--p2); }
+.tbtn:active { background: rgba(12, 14, 24, .78); transform: translateY(1px); }
+
+/* tight phones: shrink the cross so both pads fit a ~300px board */
+@media (hover: none) and (pointer: coarse) and (max-width: 340px) {
+  .dpad { grid-template: repeat(3, 36px) / repeat(3, 36px); }
+  .tbtn { font-size: 12px; }
+}
+
+.tchip {
+  position: absolute;
+  top: 8px; right: 8px;
+  pointer-events: auto;
+  touch-action: none;
+  display: none;          /* .on — set by TouchControls.syncChips */
+  padding: 5px 8px;
+  border: 2px solid var(--border);
+  background: rgba(12, 14, 24, .55);
+  color: var(--ink);
+  font-family: inherit; font-size: 10px;
+  border-radius: 0; outline: none;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.tchip.on { display: block; }
+.tchip.quit { right: 48px; border-color: #ee2d2c; color: #ee2d2c; }
+.tchip:active { background: rgba(12, 14, 24, .85); transform: translateY(1px); }

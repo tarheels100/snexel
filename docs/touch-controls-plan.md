@@ -62,7 +62,7 @@ off-screen canvas) (~1h) ✅ IMPLEMENTED
 - Desktop layout untouched (media query gates everything); dvh stays the
   progressive enhancement over vh.
 
-### Stage 2 — D-pad markup, CSS, and wiring (~2.5h)
+### Stage 2 — D-pad markup, CSS, and wiring (~2.5h) ✅ IMPLEMENTED
 
 - `index.html`: `.touch-layer` inside `.screen-wrap` (position:relative),
   `pointer-events: none` container with `pointer-events: auto` buttons; two
@@ -84,6 +84,36 @@ off-screen canvas) (~1h) ✅ IMPLEMENTED
   - overlay taps: click handlers mapping to `startGame(1/2)`, `initMenu()`,
     `initOptions()`, rematch — keyboard still works in parallel;
   - debug API: `debug.enabled`, `debug.press(pad, dir)` for tests.
+
+**Implementation notes (shipped: game.js?v=40, minigame.js?v=6, touch.js?v=1,
+styles.css?v=8, index.html):**
+- Anchor element is `.crt` (the class index.html actually uses), not
+  `.screen-wrap`; pads/chips are DOM *inside* it, below the overlay div so
+  overlays visually cover them while showing.
+- `steerPlayer(i, dir)` extracted as planned; additionally the whole keydown
+  handler became named `handleKeyDown(e)` — overlay taps call
+  `handleKeyDown({code})` directly instead of dispatching synthetic
+  KeyboardEvents (works in vm tests, one logic path for keys+taps).
+- `MiniGame` gained `touchSteer(dir)` (shared `queueDir` guard),
+  `togglePause()`, and `forfeit()` (beyond plan — backs the ✕ chip).
+- One delegated `pointerdown` on `.crt` (closest `[data-dir]` → pad,
+  `[data-action]` → chip, `[data-key]` → overlay row, else countdown-skip).
+- Overlay templates gained `data-key` attrs: menu rows (Digit1/Digit2/O/Esc),
+  options rows (Digit3/Digit4/Z/X/T/Esc — so touch users CAN toggle
+  poop/wrap/mute/track, resolving the plan's "out of scope" note), pause
+  RESUME (KeyP), game-over REMATCH/Esc.
+- Chip visibility: `setInterval(syncChips, 120ms)` polls state (no event hook
+  exists for state transitions); pause chip shows while playing or mid-mini,
+  ✕ chip only mid-round (not during countdown).
+- Tapping the frozen board during the resume countdown skips it (Escape).
+- Solo routing: both pads steer P1; versus pad→player index; mini rounds:
+  both pads steer MiniGame regardless of mode.
+- Pads/chips use `touch-action: none`; small-phone media query shrinks the
+  cross to 36px cells so both pads fit a ~300px board.
+- `window.TouchControls` + `globalThis.TouchControls` alias; debug API is
+  `debug.{enabled, steerPad, tapKey, chipPause, chipQuit, syncChips}`.
+- Listeners install only when `matchMedia("(hover: none) and (pointer: coarse)")`
+  matches; tests don't load touch.js yet (Stage 3 adds `touch-test.js`).
 
 ### Stage 3 — presentation + tests (~2h)
 

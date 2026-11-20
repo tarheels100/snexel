@@ -104,12 +104,16 @@
       return;
     }
     const d = MINI_KEYS[code];
-    if (d && g.phase === "play" && g.queue.length < 3) {
-      // same guard as the main game's turn handler: no reversals — a
-      // reversed steer would put the head straight into the neck
-      const last = g.queue.length ? g.queue[g.queue.length - 1] : g.dir;
-      if (d !== last && d !== REV[last]) g.queue.push(d);
-    }
+    if (d) queueDir(d);
+  }
+
+  // Shared steering for arrow keys AND touch pads (touch.js): same no-reversal
+  // guard as the main game's turn handler — a reversed steer would put the
+  // head straight into the neck — and the same max-3 pending queue.
+  function queueDir(d) {
+    if (!g || g.phase !== "play" || g.queue.length >= 3) return;
+    const last = g.queue.length ? g.queue[g.queue.length - 1] : g.dir;
+    if (d !== last && d !== REV[last]) g.queue.push(d);
   }
 
   /* ---- mini rules: apples only, walls kill, wrap OFF by design ---- */
@@ -465,6 +469,17 @@
     start, frame,
     isActive: () => !!g,
     setMusic,
+    // Public touch-control API (stage 2 of touch-controls-plan.md): pads call
+    // these directly; keyboard still routes through handleKey above.
+    touchSteer: dir => queueDir(dir),
+    togglePause: () => {
+      if (!g) return;
+      if (g.phase === "play") g.phase = "paused";
+      else if (g.phase === "paused") g.phase = "play";
+    },
+    forfeit: () => {
+      if (g && ["play", "paused", "win", "fireworks", "count"].includes(g.phase)) goFade(g.reason || "skipped");
+    },
     debug,
   };
   Object.defineProperty(ns, "music", { get: () => music });
