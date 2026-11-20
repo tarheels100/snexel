@@ -28,7 +28,9 @@
 
   // last-tap ghost: the pad's center cell briefly shows the arrow you just
   // tapped, fading over ~600ms (opacity decayed by syncChips' 120ms poll).
-  const GLYPH = { u: "▲", d: "▼", l: "◀", r: "▶" };
+  // \uFE0E (variation selector-15) forces TEXT presentation — without it
+  // Android's emoji font hijacks ▲◀▶▼ into black emoji that ignore color.
+  const GLYPH = { u: "▲\uFE0E", d: "▼\uFE0E", l: "◀\uFE0E", r: "▶\uFE0E" };
   const lastTap = [null, null];      // {dir, t} per pad — debug-readable
   let ghostEls = [null, null];       // bound to the DOM when enabled
 

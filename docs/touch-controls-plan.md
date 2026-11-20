@@ -138,6 +138,10 @@ the plan's corner-overlay pads were replaced by pads OUTSIDE the board —
   deterministic in vm tests via a real `setTimeout`.
 - Player colors moved to the `.dpad` level so buttons AND ghost inherit via
   `currentColor` (`border: 2px solid currentColor`).
+- Glyphs carry U+FE0E (variation selector-15): Android's emoji font otherwise
+  hijacks ▲◀▶▼/✕ into black emoji that ignore CSS `color` — device report
+  said pads rendered black; FE0E forces the text presentation (touch.js?v=4,
+  index.html markup entities `&#9650;&#xFE0E;` etc).
 - `MiniGame.debug.turnQueue()` getter added (v7) — the routing proof; `turn(d)`
   stays the test-only push setter.
 - `touch-test.js`: 34 checks, TWO sandboxes — touch-enabled (fake DOM: crt /
