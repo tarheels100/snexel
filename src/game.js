@@ -92,7 +92,7 @@ const GAME_CONFIG = {
   mini: { gw: 20, gh: 16, cell: 6, snakeLen: 3, goal: 10, apples: 2, grow: 1,
           tickMs: 130, winMs: 0.6, fxMs: 2.0, diedMs: 0.8, fadeMs: 0.5,
           countMs: 3.35,     // entry "3 2 1 GO!" (1s per digit + 0.35s GO), same as the resume countdown
-          shrink: 3 },       // mini-win reward: main snake loses this many tail segments
+          shrink: 5 },       // mini-win reward: main snake loses this many tail segments
 };
 const cfg = () => (mode === 2 ? GAME_CONFIG.versus : GAME_CONFIG.solo);
 
