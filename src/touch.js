@@ -45,7 +45,12 @@
   function syncChips() {
     if (!enabled) return;
     const inMini = state === "minigame" && !countdown;
-    if (pauseChip) pauseChip.classList.toggle("on", state === "playing" || inMini);
+    const driving = state === "playing" || inMini;
+    // menu/options/pause/game-over: hide the pads entirely (they sit outside
+    // the board now, so the overlay can't cover them); chips keep their own
+    // visibility logic.
+    if (layer) layer.classList.toggle("idle", !driving);
+    if (pauseChip) pauseChip.classList.toggle("on", driving);
     if (quitChip) quitChip.classList.toggle("on", inMini && MiniGame.isActive());
   }
 
@@ -59,6 +64,7 @@
   if (!enabled) return;
 
   const crt = document.querySelector(".crt");
+  const layer = document.querySelector(".touch-layer");
   const pauseChip = document.getElementById("t-pause");
   const quitChip = document.getElementById("t-quit");
 

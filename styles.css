@@ -184,7 +184,8 @@ canvas {
   .hud { font-size: 8px; }
   .hud-title { font-size: 8px; letter-spacing: 2px; }
   .hud-left, .hud-right { gap: 10px; }
-  .hint { font-size: 6px; line-height: 1.6; }
+  /* keyboard hint is meaningless on touch — pads/chips do the explaining */
+  .hint { display: none; }
 
   /* overlays: same content, phone-sized type (long wrap-mode line wraps —
    * centered, still readable) */
@@ -207,18 +208,25 @@ canvas {
 /* Hidden by default — only the coarse-pointer media query above shows */
 /* them, and touch.js only wires listeners on touch devices.           */
 /* ------------------------------------------------------------------ */
+/* One knob controls pad cell size; shrink queries just retune it, and   */
+/* every position/reservation calc below reads it via 3*var(--pad).      */
+:root { --pad: 44px; }
+
 .touch-layer {
   position: absolute;
   inset: 0;
   display: none;
   pointer-events: none;   /* only the buttons below accept taps */
 }
+/* inert when nothing is being driven (menu/options/pause/game-over) —
+   chips are outside .dpad and keep their own visibility logic */
+.touch-layer.idle .dpad { visibility: hidden; pointer-events: none; }
 
 .dpad {
   position: absolute;
   bottom: 8px;
   display: grid;
-  grid-template: repeat(3, 44px) / repeat(3, 44px);
+  grid-template: repeat(3, var(--pad)) / repeat(3, var(--pad));
   pointer-events: auto;
   touch-action: none;     /* no scroll/zoom while thumbing the pads */
 }
@@ -242,8 +250,43 @@ canvas {
 
 /* tight phones: shrink the cross so both pads fit a ~300px board */
 @media (hover: none) and (pointer: coarse) and (max-width: 340px) {
-  .dpad { grid-template: repeat(3, 36px) / repeat(3, 36px); }
+  :root { --pad: 36px; }
   .tbtn { font-size: 12px; }
+}
+
+/* PORTRAIT touch: pads sit BELOW the board, in the corners of its width.
+   They overflow .crt (absolute children escape it), so .game reserves
+   3*pad + gap under the board; hint is hidden here anyway. */
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .dpad.p1 { left: 8px; bottom: calc(-3 * var(--pad) - 16px); }
+  .dpad.p2 { right: 8px; bottom: calc(-3 * var(--pad) - 16px); }
+  .game {
+    padding-bottom: calc(3 * var(--pad) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* LANDSCAPE touch: pads sit to the SIDES of the board, vertically
+   centered against it. .game reserves the same strip left/right and the
+   board width cap subtracts both strips so the row never overflows. */
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .dpad.p1 { left: calc(-3 * var(--pad) - 16px); bottom: auto; top: 50%; transform: translateY(-50%); }
+  .dpad.p2 { right: calc(-3 * var(--pad) - 16px); bottom: auto; top: 50%; transform: translateY(-50%); }
+  .game {
+    padding-left: calc(3 * var(--pad) + 16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(3 * var(--pad) + 16px + env(safe-area-inset-right, 0px));
+  }
+  :root {
+    --board-w: clamp(200px,
+                     calc(100vw - 2 * (3 * var(--pad) + 16px) - 2 * max(10px, env(safe-area-inset-left, 0px))),
+                     calc((100vh - var(--chrome)) * 1.3333));
+  }
+  @supports (height: 100dvh) {
+    :root {
+      --board-w: clamp(200px,
+                       calc(100vw - 2 * (3 * var(--pad) + 16px) - 2 * max(10px, env(safe-area-inset-left, 0px))),
+                       calc((100dvh - var(--chrome)) * 1.3333));
+    }
+  }
 }
 
 .tchip {

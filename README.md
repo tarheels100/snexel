@@ -30,9 +30,10 @@ Audio unlocks on the first key/click (browser autoplay policy).
 All toggles persist in `localStorage` (keys `snake_poop`, `snake_wrap`,
 `snake_music_muted`, `snake_sfx_muted`, `snake_track`, `snake_best`).
 
-On touch devices (phones/tablets) the keyboard is replaced by overlay thumb
-D-pads shown on the board: left pad = P1, right pad = P2 (solo: either pad
-steers P1), plus a pause chip, a mini-game forfeit chip, and tap-to-press
+On touch devices (phones/tablets) the keyboard hint is replaced by thumb
+D-pads placed *outside* the board — below it in portrait, to its sides in
+landscape: left pad = P1, right pad = P2 (solo: either pad steers P1), plus
+a pause chip on the board, a mini-game forfeit chip, and tap-to-press
 overlay rows. Desktop never shows or wires them (media-query detection).
 
 ## Features

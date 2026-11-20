@@ -115,6 +115,19 @@ styles.css?v=8, index.html):**
 - Listeners install only when `matchMedia("(hover: none) and (pointer: coarse)")`
   matches; tests don't load touch.js yet (Stage 3 adds `touch-test.js`).
 
+**Placement revision (post-device-test, styles.css?v=10 + touch.js?v=2):**
+the plan's corner-overlay pads were replaced by pads OUTSIDE the board —
+- portrait: below the board (corners of its width); landscape: to the sides,
+  vertically centered against it — via orientation media queries; pads
+  overflow `.crt` (absolute children escape it) and `.game` reserves the
+  strip with padding (landscape board-width cap subtracts both strips).
+- pad cell size is one knob, `--pad: 44px` (36px on ≤340px phones); every
+  offset/reservation calc reads `3*var(--pad) + 16px`.
+- keyboard hint hidden on touch devices (its keys are meaningless there).
+- pads hidden entirely when nothing is drivable (menu/options/pause/over or
+  countdown): `syncChips` toggles `.idle` on the layer; chips keep their own
+  logic, and overlay taps still press menu/rematch/resume.
+
 ### Stage 3 — presentation + tests (~2h)
 
 - Active state: brighter fill, 1px pixel "press" offset, player-colored border;
