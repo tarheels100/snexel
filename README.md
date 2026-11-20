@@ -92,6 +92,7 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
 - CPU-controlled snake for versus mode (`cpu-snake-plan.md`)
+- Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)
 
 ## License
