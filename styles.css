@@ -6,13 +6,16 @@
   --p1: #5ad171;
   --p2: #f5a664;
   --border: #3f776f;
-  /* board fits both viewport width AND height so HUD/hint never clip */
-  --board-w: clamp(240px, min(92vw, 800px), calc((100vh - 190px) * 1.3333));
+  /* board fits both viewport width AND height so HUD/hint never clip;
+     --chrome is the vertical budget for HUD + hint + gutters (shrunk on
+     touch devices below, where type is smaller) */
+  --chrome: 190px;
+  --board-w: clamp(240px, min(92vw, 800px), calc((100vh - var(--chrome)) * 1.3333));
 }
 
 @supports (height: 100dvh) {
   :root {
-    --board-w: clamp(240px, min(92vw, 800px), calc((100dvh - 190px) * 1.3333));
+    --board-w: clamp(240px, min(92vw, 800px), calc((100dvh - var(--chrome)) * 1.3333));
   }
 }
 
@@ -135,4 +138,61 @@ canvas {
   text-align: center;
   letter-spacing: 1px;
   line-height: 1.8;
+}
+
+/* ------------------------------------------------------------------ */
+/* Touch devices — Stage 1 of docs/touch-controls-plan.md (viewport     */
+/* fit + gesture suppression + safe areas). Applies only when the       */
+/* primary pointer is a finger (no hover, coarse pointer), so desktop   */
+/* layout above is untouched. D-pad buttons arrive in Stage 2 on top of */
+/* this foundation.                                                     */
+/* ------------------------------------------------------------------ */
+@media (hover: none) and (pointer: coarse) {
+  html { overscroll-behavior: none; }   /* no rubber-band pull-refresh over the board */
+
+  body {
+    touch-action: manipulation;          /* kills double-tap zoom; taps stay responsive */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* notch / home-bar safe areas, never smaller than the desktop gutter */
+  .game {
+    gap: 6px;
+    padding: max(10px, env(safe-area-inset-top, 0px))
+             max(10px, env(safe-area-inset-right, 0px))
+             max(10px, env(safe-area-inset-bottom, 0px))
+             max(10px, env(safe-area-inset-left, 0px));
+  }
+
+  /* smaller HUD/hint type frees vertical chrome, so the board can claim
+     more of the screen; width cap uses the padded content box instead of
+     92vw, and the floor drops for 320px-wide phones */
+  :root {
+    --chrome: 130px;
+    --board-w: clamp(200px, calc(100vw - 2 * max(10px, env(safe-area-inset-left, 0px))),
+                     calc((100vh - var(--chrome)) * 1.3333));
+  }
+  @supports (height: 100dvh) {
+    :root {
+      --board-w: clamp(200px, calc(100vw - 2 * max(10px, env(safe-area-inset-left, 0px))),
+                       calc((100dvh - var(--chrome)) * 1.3333));
+    }
+  }
+
+  .hud { font-size: 8px; }
+  .hud-title { font-size: 8px; letter-spacing: 2px; }
+  .hud-left, .hud-right { gap: 10px; }
+  .hint { font-size: 6px; line-height: 1.6; }
+
+  /* overlays: same content, phone-sized type (long wrap-mode line wraps —
+   * centered, still readable) */
+  .ov-inner { padding: 10px; }
+  .ov-title { font-size: 15px; letter-spacing: 2px; margin-bottom: 12px; text-shadow: 2px 2px 0 #ee2d2c; }
+  .ov-sub { font-size: 7px; margin-bottom: 12px; letter-spacing: 1px; }
+  .ov-lines { font-size: 8px; line-height: 2; }
+  .ov-lines .key, .ov-note .key { font-size: 8px; padding: 3px 6px; margin-right: 6px; }
+  .ov-score { font-size: 8px; line-height: 2; margin-bottom: 10px; }
+  .ov-note { margin-top: 12px; font-size: 7px; }
 }

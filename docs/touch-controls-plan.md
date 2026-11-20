@@ -31,7 +31,7 @@ Keyboard behavior stays exactly as-is on desktop.
 ## Work order
 
 ### Stage 1 — viewport fit (do this first; pads are useless on an
-off-screen canvas) (~1h)
+off-screen canvas) (~1h) ✅ IMPLEMENTED
 
 - `styles.css`: on coarse-pointer devices, scale the canvas to the viewport:
   `width: min(100vw, calc(100vh * 256/192))` (keeps the 4:3 pixel aspect,
@@ -43,6 +43,24 @@ off-screen canvas) (~1h)
   `user-select: none` on the screen area.
 - Landscape phones: board fits height; portrait: fits width — pads anchor to
   the *canvas corners*, not the window, so they stay on the board either way.
+
+**Implementation notes (shipped: styles.css?v=7 + index.html):**
+- The plan assumed a fixed 1024×768 canvas, but `styles.css` already had a
+  `--board-w` clamp scaling the board to viewport width/height — the
+  "off-screen canvas" risk was already covered. Stage 1's actual deliverables
+  became: gesture suppression, safe-area insets, phone-scale type, and a
+  smaller vertical chrome budget.
+- `--chrome: 190px` (desktop HUD/hint budget) is now a CSS var; touch devices
+  drop it to 130px since HUD/hint type shrinks (11→8px, 8→6px), letting the
+  board claim more of the screen.
+- Touch width cap uses `100vw − 2·max(10px, safe-area-inset-left)` instead of
+  `92vw`; the clamp floor drops to 200px for 320px-wide phones.
+- Viewport meta existed already; added `viewport-fit=cover` so `env()` safe
+  areas are non-zero on notched devices.
+- Overlay typography scales down on touch (title 22→15px, lines 12→8px,
+  notes 9→7px); long option lines wrap centered.
+- Desktop layout untouched (media query gates everything); dvh stays the
+  progressive enhancement over vh.
 
 ### Stage 2 — D-pad markup, CSS, and wiring (~2.5h)
 
