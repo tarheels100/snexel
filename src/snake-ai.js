@@ -1,4 +1,4 @@
-/* snake-ai.js — Snexel AI engine core (Phase A of docs/snake-ai-plan.md).
+/* snake-ai.js — Snexel AI engine core (Phases A+B of docs/snake-ai-plan.md).
  * Pure decision engine: no DOM, no rAF, no sound, no game globals.
  * Classic script inside an IIFE, so its internals NEVER collide with the
  * shared global scope; it exposes only window.SnakeAI (+ globalThis alias).
@@ -10,7 +10,8 @@
  *
  * SnakeAI.choose(world, opts) -> "u"|"d"|"l"|"r".
  * opts: { danger, floodFill, slack, jitter, pineappleRadius, zoneReach,
- *         fruitKill }  (all optional; Phase C presets will wrap them).
+ *         fruitKill, cycle, shortcutSlack, cycleHazard }  (all optional;
+ *         Phase C presets will wrap them).
  */
 (function () {
   const REV = { u: "d", d: "u", l: "r", r: "l" };
@@ -206,8 +207,114 @@
     return { count, need: newBody.length + (o.slack ?? 1) };
   }
 
+  /* ---- Phase B: Hamiltonian cycle (cached per grid size) ----
+   * Serpentine cycle for EVEN gw x gh: start (0,0), U-pair row serpentine
+   * over columns x>=1, then column-0 spine back up to (0,0). Uses only
+   * non-wrap edges, so it stays valid while wrap mode toggles mid-match.
+   * Strict following is provably never self-colliding: the body is the
+   * contiguous run behind the head, and the next cycle cell is occupied
+   * only if len >= N (board full — never reached in play).
+   */
+  const cycleCache = new Map();
+  function buildCycle(gw, gh) {
+    if (gw < 2 || gh < 2 || (gw * gh) % 2 !== 0) return null;   // odd grids: BFS tier only
+    const pts = [{ x: 0, y: 0 }];
+    for (let k = 0; k < gh / 2; k++) {
+      const y0 = 2 * k, y1 = 2 * k + 1;
+      for (let x = 1; x < gw; x++) pts.push({ x, y: y0 });
+      for (let x = gw - 1; x >= 1; x--) pts.push({ x, y: y1 });
+    }
+    for (let y = gh - 1; y >= 1; y--) pts.push({ x: 0, y });
+    // sanity: cover all cells exactly once, consecutive (incl. wrap-around) adjacent
+    const idx = new Map();
+    pts.forEach((p, i) => { if (idx.has(key(p.x, p.y))) return null; idx.set(key(p.x, p.y), i); });
+    if (idx.size !== gw * gh) return null;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) return null;
+    }
+    return { pts, idx };
+  }
+  function cycleFor(gw, gh) {
+    const k = `${gw}x${gh}`;
+    if (!cycleCache.has(k)) cycleCache.set(k, buildCycle(gw, gh));
+    return cycleCache.get(k);
+  }
+
+  // Cycle-tier decision: strict follow, shortcut toward food, or hazard skip.
+  // Returns { d, gain, tier } or null -> caller degrades to the BFS tier.
+  function cycleMove(w, o, c) {
+    const N = c.pts.length;
+    const head = w.body[0], tail = w.body[w.body.length - 1];
+    const hi = c.idx.get(key(head.x, head.y));
+    const ti = c.idx.get(key(tail.x, tail.y));
+    if (hi === undefined || ti === undefined) return null;   // off-cycle (odd grid / bug)
+
+    const dm = o.danger === false ? {} : dangerMap(w, o);
+    const th = o.cycleHazard ?? HIGH;
+    const poop = new Set(w.poops.map(p => ptKey(p, w)));
+    const hazard = (x, y) => {
+      const p = dm[key(x, y)];
+      return (p !== undefined && p >= th) || poop.has(key(x, y));
+    };
+    const occ = occupancy(w);
+    const legal = legalMoves(w, o);
+    const len = w.body.length;
+    const slackK = o.shortcutSlack ?? 2;
+    const fd = (j) => (j - hi + N) % N;
+
+    // strict follower: next cycle cell, if free & legal
+    const nx = c.pts[(hi + 1) % N];
+    const strict = legal.find(m => m.x === nx.x && m.y === nx.y && !hazard(nx.x, nx.y));
+    let best = strict ? { d: strict.d, gain: 1 } : null;
+
+    // shortcuts: jump ahead along the cycle toward a fruit. Conditions:
+    //   1. landing cell legal + hazard-free
+    //   2. every cycle cell SKIPPED (head..landing) unoccupied and hazard-free
+    //      (jumping over our own body = future collision)
+    //   3. slack: cycle distance from landing forward to the tail >= newLen + slackK
+    //      (never outrun the tail around the loop)
+    const fruits = [...w.foods, ...w.pineapples, ...w.bananas];
+    for (const f of fruits) {
+      const fi = c.idx.get(key(f.x, f.y));
+      if (fi === undefined || hazard(f.x, f.y)) continue;
+      const fdist = fd(fi);
+      if (fdist <= 1) continue;                    // adjacent food handled by strict/legal moves
+      for (const m of legal) {
+        const j = c.idx.get(key(m.x, m.y));
+        if (j === undefined) continue;
+        const g = fd(j);
+        if (g <= 1 || g > fdist) continue;         // land at or before the fruit, never past it
+        let ok = true;
+        for (let s = 1; s < g; s++) {
+          const sc = c.pts[(hi + s) % N];
+          if (occ.has(key(sc.x, sc.y)) || hazard(sc.x, sc.y)) { ok = false; break; }
+        }
+        if (!ok) continue;
+        const newLen = len + (fruitAt(w, m.x, m.y) ? 1 : 0);
+        const toTail = (ti - j + N) % N;
+        if (toTail < newLen + slackK) continue;    // would outrun the tail around the loop
+        if (!best || g > best.gain) best = { d: m.d, gain: g };
+      }
+    }
+    if (!best) return null;                        // hazards block the cycle ahead -> BFS tier
+    debugStats.gain = best.gain;
+    return { d: best.d, gain: best.gain, tier: "cycle" };
+  }
+
+  let debugStats = { gain: 1, tier: "bfs" };    // last choose() tier, for tests
+
   function choose(w, opts) {
     const o = opts || {};
+    debugStats = { gain: 1, tier: "bfs" };
+    if (o.cycle) {
+      const c = cycleFor(w.gw, w.gh);
+      if (c) {
+        const mv = cycleMove(w, o, c);
+        if (mv) { debugStats = { gain: mv.gain, tier: mv.tier }; return mv.d; }
+        // cycle unusable (hazard on it / off-cycle) -> degrade to BFS tier below
+      }
+    }
     const rng = w.rng || o.rng || mulberry32(1);
     const moves = legalMoves(w, o);
     if (!moves.length) return REV[w.dir];   // cornered: accept death
@@ -269,6 +376,9 @@
       reachableAfter: (w, cand, o) => reachableAfter(w, cand, o).count,
       mulberry32,
       REV,
+      cycleFor: (gw, gh) => buildCycle(gw, gh),      // fresh build (uncached) for cover tests
+      cycleIndex: (w, x, y) => { const c = cycleFor(w.gw, w.gh); return c ? c.idx.get(key(x, y)) : undefined; },
+      lastTier: () => debugStats,
     },
   };
   window.SnakeAI = T;

@@ -1,4 +1,4 @@
-/* tests/ai-test.js — SnakeAI engine suite (Phase A of docs/snake-ai-plan.md).
+/* tests/ai-test.js - SnakeAI engine suite (Phases A+B of docs/snake-ai-plan.md).
  * Loads src/snake-ai.js ALONE in a vm sandbox: the engine must have zero
  * game/DOM dependencies. Mirrors plan §5 assertions for the core tier. */
 const fs = require("fs");
@@ -132,6 +132,72 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("300-tick fuzz soak (wrap+poops): never died, ate food", deaths === 0 && grew > 0);
 }
 
+// ---- Phase B: Hamiltonian cycle + shortcuts ----
+{
+  const TD = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] };
+  const c = D.cycleFor(32, 24);
+  let coverOk = !!c && c.pts.length === 768;
+  const seen = new Set();
+  for (const p of c.pts) seen.add(p.x + "," + p.y);
+  for (let i = 0; i < c.pts.length; i++) {
+    const a = c.pts[i], b = c.pts[(i + 1) % c.pts.length];
+    if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) coverOk = false;
+  }
+  check("Hamiltonian cycle: 768 cells, each exactly once, closed adjacency", coverOk && seen.size === 768);
+  check("cycle cached for 20x16 too; odd-height grid degrades to null",
+    D.cycleFor(20, 16).pts.length === 320 && D.cycleFor(32, 23) === null);
+
+  // solo soak mirroring tick() death rules: wall / body (tail-pop logic) / poop
+  function soak(opts, ticks, seed, poopCount, lenCap) {
+    const gw = 32, gh = 24;
+    const rng = D.mulberry32(seed);
+    const w = { gw, gh, wrap: false, body: [{ x: 1, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 1 }],
+      dir: "r", foods: [], pineapples: [], bananas: [], poops: [], foes: [], rng };
+    for (let i = 0; i < poopCount; i++) w.poops.push({ x: (rng() * gw) | 0, y: (rng() * gh) | 0 });
+    const poopS = new Set(w.poops.map(p => p.x + "," + p.y));
+    const freeCell = () => {
+      for (let t = 0; t < 200; t++) {
+        const x = (rng() * gw) | 0, y = (rng() * gh) | 0;
+        const k = x + "," + y;
+        if (!w.body.some(b => b.x === x && b.y === y) && !poopS.has(k) && !w.foods.some(f => f.x === x && f.y === y)) return { x, y };
+      }
+      return null;
+    };
+    const f0 = freeCell(); if (f0) w.foods.push(f0);
+    let ate = 0, dead = false, maxGain = 1, tierBfs = 0;
+    for (let t = 0; t < ticks; t++) {
+      const d = AI.choose(w, opts);
+      const lt = D.lastTier();
+      if (lt.tier !== "cycle") tierBfs++;
+      if (lt.gain > maxGain) maxGain = lt.gain;
+      const nx = w.body[0].x + TD[d][0], ny = w.body[0].y + TD[d][1];
+      const eats = w.foods.some(f => f.x === nx && f.y === ny);
+      const occ = new Set(w.body.slice(1, eats ? w.body.length : w.body.length - 1).map(p => p.x + "," + p.y));
+      if (nx < 0 || nx >= gw || ny < 0 || ny >= gh || occ.has(nx + "," + ny) || poopS.has(nx + "," + ny)) { dead = true; break; }
+      w.dir = d;
+      w.body.unshift({ x: nx, y: ny });
+      if (!eats) w.body.pop();
+      if (eats) {
+        ate++;
+        if (lenCap && w.body.length > lenCap) w.body.pop();
+        const f = freeCell(); if (f) w.foods.push(f);
+      }
+    }
+    return { dead, ate, maxGain, tierBfs, len: w.body.length };
+  }
+
+  const strict = soak({ cycle: true, shortcutSlack: 10000, danger: true }, 1000, 7, 0, 300);
+  check("strict cycle follower: 1000-tick solo soak, zero deaths, ate food, always cycle tier",
+    !strict.dead && strict.ate > 0 && strict.tierBfs === 0);
+
+  const fast = soak({ cycle: true, shortcutSlack: 2, danger: true }, 1000, 42, 0, 120);
+  check("shortcuts (slack 2): alive 1000 ticks, real jumps used (gain > 1)",
+    !fast.dead && fast.ate > 0 && fast.maxGain > 1);
+
+  const hazardous = soak({ cycle: true, shortcutSlack: 2, danger: true, floodFill: true, slack: 2 }, 1000, 99, 30, 80);
+  check("cycle tier with 30 scattered poops: alive 1000 ticks (skip or degrade)", !hazardous.dead && hazardous.ate > 0);
+}
+
 // ---- D1 wiring: game.js + engine share one scope (classic scripts) ----
 {
   const noop = () => {};
@@ -213,5 +279,5 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("hatch pop silent in menu demo; plays in real play", es.menuGains === 0 && es.playNodes > 0 && es.hatched);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (24 checks)");
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (29 checks)");
 process.exit(fails ? 1 : 0);

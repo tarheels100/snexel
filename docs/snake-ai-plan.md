@@ -175,7 +175,7 @@ random where game code is involved):
 | Phase | Work | Est | Status |
 |---|---|---|---|
 | A — core engine: legal moves, danger map, BFS, flood-fill | ~150 lines | 3–4 h | ✅ done (`src/snake-ai.js` + `tests/ai-test.js`, 20 checks) |
-| B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h | pending |
+| B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h | ✅ done (`snake-ai.js` cycle tier + 5 soak tests) |
 | C — presets, personality knobs, extra `ai-test.js` cases | ~180 lines | 2–3 h | pending |
 | D1 — demo snake wiring + browser check | ~20 lines | 1 h | ✅ done (`game.js?v=41` + `snake-ai.js?v=1`) |
 | D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h | pending |
@@ -227,6 +227,28 @@ file as usual (`snake-ai.js?v=1…`).
   title music keeps chilling but the demo snake makes no noise. Gameplay SFX
   untouched; `ai-test.js` proves zero audio nodes built in menu, nodes built
   in play.
+
+**Phase B implementation notes** (shipped):
+- `buildCycle(gw, gh)`: serpentine U-pair cycle — start (0,0), row-pair
+  zigzag over columns x≥1, column-0 spine back up; validated (cover +
+  adjacency incl. close edge) at build time; cached per `gw x gh` in a Map.
+  Works for any gw≥2 with even gh; odd grids return null → BFS tier.
+  Uses only non-wrap edges → valid while wrap toggles mid-match.
+- `cycleMove()` tier in `choose()` when `opts.cycle`:
+  - strict follow = next cycle cell (provably never self-collides: body is
+    the contiguous run behind the head; next cell occupied only if len ≥ N);
+  - shortcuts toward fruit: landing legal + hazard-free, every SKIPPED cycle
+    cell unoccupied/hazard-free, and `cycleDist(landing→tail) ≥ newLen +
+    shortcutSlack` (never outrun the tail around the loop); land at or
+    before the fruit, never past it;
+  - hazard on the cycle ahead (poop / blast zone ≥ `cycleHazard`) → jump the
+    hazard if a legal shortcut exists, else **degrade to BFS tier** — the
+    cycle is never followed into a hazard;
+  - `debug.lastTier()` exposes `{ tier, gain }` per tick for test proofs.
+- `ai-test.js` Phase B soaks (all green): cycle covers 768 cells once with
+  closed adjacency; 20×16 cached, 32×23 → null; strict follower 1000 ticks
+  zero deaths + always cycle tier; slack-2 shortcuts 1000 ticks alive with
+  real jumps (gain > 1); 30 scattered poops 1000 ticks alive (skip/degrade).
 
 ## 7. Gotchas & fairness rules
 
