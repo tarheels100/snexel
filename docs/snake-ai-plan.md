@@ -1,0 +1,211 @@
+# Plan: Snexel AI engine (snake-ai.js) — build first, wire later
+
+Goal: one **standalone, advanced snake AI engine** (`src/snake-ai.js`) that
+three consumers share:
+
+1. **Title-screen demo snake** (attract mode) — replaces the current wander;
+   looks skilled, never dies, occasionally shortcuts toward apples.
+2. **Baby snake** (egg-baby.js) — replaces the current greedy dodge AI; smarter
+   evasion, but still **catchable** (the egg→capture→mini-game pipeline must
+   keep firing — this is a hard product constraint, not a bug).
+3. **Human-vs-CPU mode** (later milestone) — a rival snake in versus games with
+   difficulty tiers, fruit tactics, and personality.
+
+The engine is built and tested FIRST (Phases A–C) with zero game wiring; the
+mode work (Phase D) comes after, per the user's ordering.
+
+Supersedes `cpu-snake-plan.md` (kept for reference — its §2.1 legal-move mirror
+and §6 gotchas apply verbatim to this engine).
+
+---
+
+## 1. Module architecture
+
+Classic `<script src>` file, same conventions as egg-baby/minigame/touch:
+`window.SnakeAI` + `globalThis.SnakeAI` alias, IIFE, debug API, no init-time
+calls into other modules (everything receives world data).
+
+```js
+SnakeAI.choose(world, preset) -> dir    // pure: returns "u|d|l|r"
+SnakeAI.preset(name) -> opts            // demo | baby | easy | normal | hard
+SnakeAI.debug = { cycleFor(gw,gh), dangerMap(world), bfs(world,from,to), seed(s) }
+```
+
+**World snapshot** (built by the consumer each tick, ~O(768), trivial):
+
+```js
+{ gw, gh, wrap,              // board + wrap mode
+  body,                      // this snake's cells, head first
+  head, dir,                 // current heading (AI never returns REV[dir])
+  foods, pineapples, bananas,
+  poops,                     // VISIBLE piles only — fairness rule, §7
+  foes,                      // other snakes: { body, head, dir, queue }
+  rng }                      // seeded PRNG, never Math.random directly
+```
+
+Pure decision = deterministic given (world, preset, rng state). Tests drive it
+directly; the game builds worlds cheaply.
+
+### 1.1 Legal-move filter (mirrors `tick()` death rules exactly)
+
+Per candidate dir (reversal excluded):
+- wrap-aware head `(x+GW)%GW`, `(y+GH)%GH` computed BEFORE collision checks;
+- wall lethal only when wrap OFF;
+- occupancy = all snake bodies **minus the tail slot vacating this tick**
+  (the game's tail-chase exception — omit it and the AI self-blocks stupidly);
+- visible poops lethal; hidden piles SAFE (fairness, §7);
+- fruit cells are legal (they're food, not terrain).
+No legal move → any reversal, accept death (same as a cornered human).
+
+## 2. Core algorithms (Phase A)
+
+### 2.1 Danger map
+
+Per-tick grid of penalties built from the snapshot:
+- static: poops (+∞), pineapple blast radius (+∞ inside, high near edge),
+  banana row/column (+∞ on the cross line);
+- dynamic: foe body cells (+∞), foe head ±1-step projections (+high),
+  contested cells (one step ahead of a foe's head along its queued dir)
+  (+high — refuses head-on-head coin flips);
+- own body: +high near head, low near tail (tail-chase allowance).
+All decisions score moves through this map.
+
+### 2.2 Target search — BFS, not straight-line
+
+BFS over empty cells (wrap-aware neighbors) to the nearest reward (apple/fruit;
+fruits get value weights; pineapple gets a bonus when a foe head is inside the
+radius — an instant-win move; banana same for its row/column). Tie-break: path
+length, then post-arrival flood-fill (§2.3), then seeded jitter among top-N.
+
+### 2.3 Survivability — flood-fill self-trap rule
+
+A move is *safe* if, after hypothetically stepping there, reachable empty cells
+≥ body length + slack. The classic snake self-trap guard; cheap (one flood
+fill per candidate, ≤4/tick).
+
+### 2.4 Hamiltonian cycle + shortcuts (Phase B — "advanced" tier)
+
+32×24 (and mini-grid 20×16) are both even → a serpentine Hamiltonian cycle
+exists; precompute once per `(gw, gh)` key and cache (row-pair zigzag, ~50
+lines). Cycle-following alone is **guaranteed never to self-collide**. The
+advanced part is **shortcuts**: on each tick, consider jumping ahead along the
+cycle toward the target food if `cycleIdx(head)` ordering stays legal and the
+slack test passes (`freeCells − remainingCyclePath ≥ bodyLen + slackK`); fall
+back to strict cycle-following when unsafe or when hazards sit on the cycle
+(poop/blast cells are removed from the usable cycle segment → if the cycle
+breaks, degrade to BFS tier; never follow a cycle into a hazard).
+Aggressiveness knob: `shortcutSlack` (easy: never, normal: conservative,
+hard: aggressive). Wrap mode note: the cycle uses only non-wrap edges, so it
+remains valid when wrap toggles ON/OFF mid-match; wrap merely makes more
+shortcuts reachable.
+
+### 2.5 Opponent modeling (hard tier only)
+
+Forward-simulate each foe `K` ticks using its queued dirs (we see `queue`,
+same as a human could); mark projected cells in the danger map; CPU cuts off
+a foe's route only when its own flood-fill slack allows (aggression knob).
+
+## 3. Presets (Phase C) — one engine, three personalities
+
+| preset       | goal priority              | safety          | jitter | notes |
+|--------------|----------------------------|-----------------|--------|-------|
+| `demo`       | nearest food, fruits liked | cycle + shortcuts (conservative) | low | death-proof attract mode |
+| `baby`       | **flee**: maximize BFS distance from player head, avoid foods/fruits/poops | flood-fill survival, never enters corner traps unless forced | medium | must stay catchable (§3.1) |
+| `easy`       | nearest food               | legal moves only, no trap checks  | high  | dies like a distracted human |
+| `normal`     | nearest food + fruit bonus | legal + flood-fill + contested    | medium | a decent human can beat it |
+| `hard`       | food + kill bonuses        | Hamiltonian + shortcuts + opp model | low   | boss tier |
+
+### 3.1 Baby catchability guarantee (product constraint)
+
+The baby must stay *annoying but capturable*: capture = player head enters a
+baby cell (`babyCaptureCheck` unchanged). Rules for the `baby` preset:
+- never eats food, never enters hazards (current behavior preserved);
+- flee weights player **head proximity** over board freedom, but the
+  flood-fill slack keeps it out of dead-end corners *until genuinely cornered*
+  (current freeze-at-corner behavior is kept as the fallback);
+- medium jitter + a `hesitationMs` knob (30% of ticks it keeps the old dir) so
+  it is readable and interceptable — a perfect evader that is uncapturable
+  would freeze the egg→mini-game pipeline; the ai-test asserts capture within
+  a scripted chase ≤ 120 ticks.
+
+## 4. Integration hooks (Phase D and consumer wiring)
+
+- **Demo**: `initMenu()` sets `players[0].cpu = preset("demo")`; menu tick calls
+  `p.dir = SnakeAI.choose(worldOf(state), p.preset)` before movement. ~15 lines.
+- **Baby**: `updateBaby()` replaces its inline avoidance scoring with
+  `SnakeAI.choose(world-with-player-snake-as-foe, preset("baby"))`; the own
+  tail-chase exception maps to the engine's vacating-tail rule. Capture/hatch/
+  banner code untouched. egg-test regressions must pass; may need baby-preset
+  assertions updated (avoidance still holds, corner freeze still reachable).
+- **CPU opponent** (later): `players[i].cpu` fields set from an options toggle
+  (`P2 = CPU`, difficulty row; localStorage `snake_cpu`/`snake_cpu_lv`); in
+  `tick()` the CPU player's dir comes from the engine; HUD shows "CPU" beside
+  P2. Key/menu: new binding for CPU match (avoid 3/4 — taken by poop/wrap;
+  use `5` or `C`). Versus egg-roll gate unchanged. Touch pads unaffected
+  (they only steer human pads).
+- `GAME_CONFIG.ai = { demo:{...}, baby:{...}, cpu:{ easy:{jitter}, normal:{...},
+  hard:{shortcutSlack, oppLookahead} } }` — plain tunable knobs, config-block
+  pattern like existing `GAME_CONFIG`.
+
+## 5. Testing plan (`tests/ai-test.js`)
+
+Same vm-sandbox style as existing suites (seeded `rng` injected; `box.v` for
+random where game code is involved):
+
+- **Determinism**: same (world, preset, seed) → same dir, twice.
+- **Legal-move mirror**: refuses wall (wrap off), body, reversal, visible poop;
+  ACCEPTS vacating tail; accepts fruit cells; wrap-head handling matches tick().
+- **Flood-fill**: refuses a move into a spiral trap (open < len + slack).
+- **Hamiltonian**: cycle covers all 768 cells exactly once; strict follower
+  survives 1000-tick solo fuzz with random foods, zero collisions.
+- **Shortcuts**: every shortcut tick re-verified legal (ordering + slack); a
+  fuzzed 1000-tick hard-tier solo run stays alive with poops scattered.
+- **Fruit offense/defense**: pineapple chosen when foe head inside radius;
+  banana when foe head on its line; flees a zone when foe is ≤2 BFS steps
+  from that fruit.
+- **Baby preset**: never steps on food/poop/foe; flees scripted head chase;
+  capture reachable ≤ 120 ticks (pipeline guard); corner-freeze fallback fires.
+- **Soak**: hard vs normal headless versus match (wrap ON, poop ON, 200 ticks):
+  both alive ≥ 50 ticks, both scores > 0 — catches oscillation/contested bugs.
+- **Regression**: existing egg-test (baby avoidance) and smoketest suites stay
+  green with the engine wired behind a flag.
+
+## 6. Milestones & estimates
+
+| Phase | Work | Est |
+|---|---|---|
+| A — core engine: legal moves, danger map, BFS, flood-fill | ~150 lines | 3–4 h |
+| B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h |
+| C — presets, personality knobs, `ai-test.js` | ~180 lines | 2–3 h |
+| D1 — demo snake wiring + browser check | ~20 lines | 1 h |
+| D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h |
+| D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h |
+
+Engine first (A→C ≈ 8–11 h) fully tested standalone; then wiring D1→D2; the
+versus mode (D3) lands last, exactly as requested. Cache versions bumped per
+file as usual (`snake-ai.js?v=1…`).
+
+## 7. Gotchas & fairness rules
+
+1. **Vacating-tail exception** must mirror `tick()` (§1.1) everywhere.
+2. **Fairness**: `choose()` only sees VISIBLE poops and current fruit positions
+   — never hidden piles or spawn RNG. Cheat toggle (anticipate reveals) off by
+   default; if ever enabled, options screen must label it.
+3. **Danger ∞ vs cycle**: hazards on the Hamiltonian cycle force the BFS tier;
+   test both wrap ON/OFF so cycle validity never depends on wrap.
+4. **Speed scaling**: decisions happen per tick; `tickMs` shrinking with level
+   tiers scales automatically — only jitter needs retune at high speed.
+5. **Baby catchability** (§3.1) is a feature, not a bug — hard-tier evasion is
+   for the versus opponent only.
+6. **No rAF/DOM in the engine** — pure math module; consumers own timing,
+   rendering, sounds; engine stays vm-testable and reusable for the mini-game
+   if ever wanted.
+7. Perf: worst case ~4 flood-fills + 2 BFS + danger-map build per tick ≈
+   tens of thousands of ops at ≤16 ticks/s — negligible even on phones.
+
+## 8. Out of scope
+
+- Learning/adaptive AI — tiered heuristics are enough and testable.
+- Interpolated-motion awareness (`smooth-motion-plan.md`) — engine works on
+  the discrete grid; visuals interpolate after decisions.
+- CPU for the mini-game or solo mode (no opponent); demo/baby/versus cover it.

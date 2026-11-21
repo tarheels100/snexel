@@ -103,7 +103,8 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 ## Planned features (design docs in `docs/`)
 
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
-- CPU-controlled snake for versus mode (`cpu-snake-plan.md`)
+- Snake AI engine (`snake-ai-plan.md`) — demo snake, smarter catchable baby,
+  and a later human-vs-CPU mode (`cpu-snake-plan.md` is superseded by it)
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
   — stages 1–3 shipped; stage 4 (optional): swipe steering, orientation hint, haptics
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)

@@ -1,5 +1,10 @@
 # Plan: CPU-controlled snake for 2-player versus mode
 
+> **Superseded by `snake-ai-plan.md`** — the engine is now planned as a
+> standalone module serving the demo snake, baby snake, and a later
+> human-vs-CPU mode. This doc's legal-move mirror (§2.1) and gotchas (§6)
+> apply verbatim inside that engine.
+
 Goal: replace player 2's arrow-key input with an AI that plays well against a
 human — smart enough to feel like a skilled rival, tunable from "distracted
 human" to "unbeatable boss".
