@@ -96,7 +96,7 @@ node tests/engine-test.js     # ChillMusic engine against fake AudioContext
 node tests/egg-test.js        # egg/baby lifecycle + AI
 node tests/mini-test.js       # mini-game incl. M4 handoff/countdown/resume
 node tests/touch-test.js      # touch routing incl. guards, chips, ghosts, desktop-off
-node tests/ai-test.js         # SnakeAI engine: legality, danger, flood-fill, soak
+node tests/ai-test.js         # SnakeAI engine: legality, danger, flood-fill, soak + demo wiring
 ```
 
 Each prints `label=value (expect …)` lines — compare against the expectations.
@@ -106,7 +106,9 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
 - Snake AI engine (`snake-ai-plan.md`) — demo snake, smarter catchable baby,
   and a later human-vs-CPU mode (`cpu-snake-plan.md` is superseded by it).
-  Phase A core engine shipped: `src/snake-ai.js` (standalone, not wired yet)
+  Phase A engine + D1 wiring shipped: the title-screen demo snake is driven by
+  `src/snake-ai.js`; press **Q** on the title screen to toggle it against the
+  old random walker (small `AI:` tag shows which brain is running)
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
   — stages 1–3 shipped; stage 4 (optional): swipe steering, orientation hint, haptics
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)

@@ -760,7 +760,34 @@ function revealPoop(x, y) {
 
 /* ---------------------------- ticking ---------------------------- */
 
+// D1 wiring: the title-screen demo snake is driven by the SnakeAI engine
+// (docs/snake-ai-plan.md Phase D1). Q toggles engine vs the old random
+// walker so engine upgrades are visible side-by-side in the attract mode.
+let demoEngine = true;
+let demoTag = "AI: ENGINE";
+const DEMO_AI_OPTS = { danger: true, floodFill: true, slack: 2, jitter: 2, zoneReach: 3 };
+// one long-lived seeded RNG: advances per tick (organic) but reproducible.
+const demoBrainRng = window.SnakeAI ? window.SnakeAI.debug.mulberry32(20260120) : null;
+
+function demoWorld(p) {
+  const foes = players.filter(q => q !== p && q.alive)
+    .map(q => ({ body: q.cells, dir: q.dir, queue: q.queue }));
+  return {
+    gw: GW, gh: GH, wrap: wrapMode,
+    body: p.cells, dir: p.dir,
+    foods, pineapples, bananas,
+    poops: poops.filter(po => po.visible),   // fairness: hidden piles unseen
+    foes,
+    rng: demoBrainRng,
+  };
+}
+
 function aiPickDir(p) {
+  if (demoEngine && window.SnakeAI) {
+    p.dir = SnakeAI.choose(demoWorld(p), DEMO_AI_OPTS);
+    return;
+  }
+  // legacy random walker (Q toggle fallback / sandbox without the engine)
   const [dx, dy] = DIRS[p.dir];
   const cand = Object.keys(DIRS).filter(d => d !== REV[p.dir]);
   // shuffle
@@ -849,6 +876,10 @@ function tick() {
     const h = heads[i];
     if (poopAt(h.x, h.y)) { died.add(i); causes[i] = "poop"; }
   });
+
+  // attract mode: the menu demo snake never ends the game — if anything would
+  // kill it (engine cornered, legacy walker trapped), the demo just restarts.
+  if (state === "menu" && died.size) { initMenu(); return; }
 
   // apply movement for survivors
   const boomKills = [];
@@ -1346,6 +1377,12 @@ function handleKeyDown(e) {
     repaint();
     return;
   }
+  // D1 debug toggle: demo snake brain — SnakeAI engine vs legacy random walker.
+  if (code === "KeyQ") {
+    demoEngine = !demoEngine;
+    demoTag = demoEngine ? "AI: ENGINE" : "AI: RANDOM";
+    return;
+  }
 
   // M3 debug entry: E launches the mini-game from the title or mid-play.
   // (M4 replaces this with the egg-capture handoff + countdown.)
@@ -1544,6 +1581,11 @@ function drawMainScene(dt, t) {
   if (window.EggBaby) EggBaby.drawBaby(t);
   drawParticles(dt);
   if (state === "playing" || state === "paused") drawLevelBanner();
+  if (state === "menu") {                        // attract-mode debug tag (top-left, lean overlay untouched)
+    ctx.fillStyle = "#7ce8c6";
+    ctx.font = "8px 'Press Start 2P', monospace";
+    ctx.fillText(demoTag, 4, 10);
+  }
   if (window.EggBaby) EggBaby.updateBaby(dt, tickMs);   // baby runs its own slower clock
 }
 

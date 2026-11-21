@@ -177,7 +177,7 @@ random where game code is involved):
 | A — core engine: legal moves, danger map, BFS, flood-fill | ~150 lines | 3–4 h | ✅ done (`src/snake-ai.js` + `tests/ai-test.js`, 20 checks) |
 | B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h | pending |
 | C — presets, personality knobs, extra `ai-test.js` cases | ~180 lines | 2–3 h | pending |
-| D1 — demo snake wiring + browser check | ~20 lines | 1 h | pending |
+| D1 — demo snake wiring + browser check | ~20 lines | 1 h | ✅ done (`game.js?v=41` + `snake-ai.js?v=1`) |
 | D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h | pending |
 | D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h | pending |
 
@@ -204,6 +204,24 @@ file as usual (`snake-ai.js?v=1…`).
   refusal, kill-bonus targeting, race-skip flee, 300-tick wrap/poop fuzz soak.
 - `index.html` untouched until wiring (Phase D); combined 7-script
   `node --check` green — engine's IIFE adds no shared-scope globals.
+
+**D1 implementation notes** (shipped):
+- `index.html` loads `src/snake-ai.js?v=1` before `game.js?v=41`.
+- `aiPickDir()` now routes through `SnakeAI.choose(demoWorld(p), DEMO_AI_OPTS)`
+  (`danger, floodFill, slack 2, jitter 2, zoneReach 3`); the legacy random
+  walker remains as fallback when the engine isn't loaded.
+- `demoWorld(p)` builds the snapshot per tick; hidden poops filtered out
+  (fairness rule); other alive snakes map to `foes` (ready for D3).
+- `demoBrainRng` = one long-lived seeded `mulberry32(20260120)` — moves are
+  organic but reproducible; `tests/ai-test.js` reproduces the menu scenario.
+- **Q debug toggle** switches the demo brain engine ↔ legacy; the canvas
+  shows a small `AI: ENGINE / AI: RANDOM` tag top-left in the menu only
+  (title overlay stays lean).
+- **Attract-mode restart rule**: if anything would kill the menu demo snake
+  (engine cornered in a spiral, legacy walker trapped), `tick()` calls
+  `initMenu()` instead of game-over — the title screen never shows "OVER".
+  Verified by a 200-tick menu soak in `ai-test.js` (engine ate, stayed in
+  attract mode, Q toggle + legacy path green).
 
 ## 7. Gotchas & fairness rules
 

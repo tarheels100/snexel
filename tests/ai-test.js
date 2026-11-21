@@ -132,5 +132,41 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("300-tick fuzz soak (wrap+poops): never died, ate food", deaths === 0 && grew > 0);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (20 checks)");
+// ---- D1 wiring: game.js + engine share one scope (classic scripts) ----
+{
+  const noop = () => {};
+  const stubCtx = {
+    fillRect: noop, globalAlpha: 1, imageSmoothingEnabled: false, fillStyle: '', fillText: noop,
+    beginPath: noop, arc: noop, fill: noop, stroke: noop, strokeStyle: '', lineWidth: 1,
+  };
+  const handlers = {};
+  const store = { snake_best: '0', snake_poop: '0', snake_music_muted: '0', snake_sfx_muted: '0', snake_wrap: '0', snake_track: 'chill' };
+  const demoRng = D.mulberry32(11);
+  const sb2 = {
+    document: { getElementById: () => ({ getContext: () => stubCtx, textContent: '', innerHTML: '', style: {}, classList: { add: noop, remove: noop } }) },
+    window: { addEventListener: (ev, fn) => { handlers[ev] = fn; }, requestAnimationFrame: noop },
+    localStorage: { getItem: k => store[k] ?? '0', setItem: (k, v) => { store[k] = String(v); } },
+    requestAnimationFrame: noop,
+    handlers, Set, Number, console, performance: { now: () => 0 },
+    Math: Object.create(Math, { random: { value: () => demoRng() } }),
+  };
+  const gameSrc = fs.readFileSync(path.join(__dirname, "..", "src", "game.js"), "utf8");
+  vm.runInNewContext(code + "\n" + gameSrc + `
+    globalThis.demoRes = (() => {
+      let leftMenu = false, maxScore = 0;
+      for (let i = 0; i < 200; i++) {
+        tick();
+        if (state !== "menu" || !players[0].alive) leftMenu = true;
+        if (players[0].score > maxScore) maxScore = players[0].score;
+      }
+      handlers.keydown({ code: "KeyQ", preventDefault: () => {} });
+      tick(); tick();
+      return { leftMenu, maxScore, tag: demoTag, eng: demoEngine, alive: players[0].alive };
+    })();`, sb2);
+  const r = sb2.demoRes;
+  check("D1 demo soak: engine menu snake stays in attract mode + eats (restart-safe)", !r.leftMenu && r.maxScore > 0);
+  check("Q toggles demo brain: legacy walker still runs", r.tag === "AI: RANDOM" && r.eng === false && r.alive);
+}
+
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (22 checks)");
 process.exit(fails ? 1 : 0);
