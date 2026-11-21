@@ -172,18 +172,38 @@ random where game code is involved):
 
 ## 6. Milestones & estimates
 
-| Phase | Work | Est |
-|---|---|---|
-| A — core engine: legal moves, danger map, BFS, flood-fill | ~150 lines | 3–4 h |
-| B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h |
-| C — presets, personality knobs, `ai-test.js` | ~180 lines | 2–3 h |
-| D1 — demo snake wiring + browser check | ~20 lines | 1 h |
-| D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h |
-| D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h |
+| Phase | Work | Est | Status |
+|---|---|---|---|
+| A — core engine: legal moves, danger map, BFS, flood-fill | ~150 lines | 3–4 h | ✅ done (`src/snake-ai.js` + `tests/ai-test.js`, 20 checks) |
+| B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h | pending |
+| C — presets, personality knobs, extra `ai-test.js` cases | ~180 lines | 2–3 h | pending |
+| D1 — demo snake wiring + browser check | ~20 lines | 1 h | pending |
+| D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h | pending |
+| D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h | pending |
 
 Engine first (A→C ≈ 8–11 h) fully tested standalone; then wiring D1→D2; the
 versus mode (D3) lands last, exactly as requested. Cache versions bumped per
 file as usual (`snake-ai.js?v=1…`).
+
+**Phase A implementation notes** (shipped):
+- `src/snake-ai.js` — IIFE exposing only `window.SnakeAI` / `globalThis.SnakeAI`;
+  zero DOM/rAF/sound/game-global deps (loads alone in a vm sandbox).
+- `choose(world, opts)` knobs: `danger, floodFill, slack, jitter,
+  pineappleRadius, zoneReach, fruitKill`; presets wrap these in Phase C.
+- Vacating-tail exception mirrors `tick()`: own tail never blocks; foe tail
+  blocks only when the foe eats next tick (`eatsNext`).
+- Danger map marks pineapple radius / banana row+column LETHAL only when a foe
+  is ≤ `zoneReach` BFS steps from that fruit (detonation risk), else HIGH;
+  fruit cells stay safe; foe 1–2-step projections marked HIGH.
+- Target picker: race-skip when a foe is strictly closer to a fruit; kill
+  bonus when a foe head sits in a blast zone; wander away from foes when no
+  fruit is worth chasing.
+- Flood-fill (`reachableAfter`) bans self-trap moves below `len + slack`.
+- `tests/ai-test.js`: determinism, legal-move mirror vs `tick()`, BFS wrap +
+  foe-tail routing (blocked when foe eats), danger semantics, ring-pocket trap
+  refusal, kill-bonus targeting, race-skip flee, 300-tick wrap/poop fuzz soak.
+- `index.html` untouched until wiring (Phase D); combined 7-script
+  `node --check` green — engine's IIFE adds no shared-scope globals.
 
 ## 7. Gotchas & fairness rules
 
