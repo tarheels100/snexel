@@ -275,6 +275,20 @@ file as usual (`snake-ai.js?v=1…`).
   within 120 ticks on all 3 seeds** (§3.1 pipeline guard); hard-vs-normal
   versus soak (wrap+poops, 200 ticks): both alive ≥ 50 ticks, both scored.
 
+**Phase C follow-up: demo spectacle-fruit chill** (shipped after device
+review — the demo kept derailing whenever a pineapple/banana spawned):
+- Blast zones are only threats when a rival exists: danger map marks them
+  `LOW` (noise) with zero foes, `HIGH` with foes but out of reach, `LETHAL`
+  when a foe can reach the fruit. A solo snake can walk through any blast
+  zone — only the eater dies, and the eater is always spared.
+- Special fruit attractiveness is knob-controlled: `specialWeight` (demo
+  0.5) and `specialMaxDist` (demo 8) gate BOTH the BFS target picker and
+  cycle shortcuts — a distant pineapple no longer pulls the sweep across
+  the board; nearby ones still tempt. Kill-bonus targeting (rival head in
+  zone) overrides the gate.
+- Fruit `kind` is derived from the source arrays, so game.js can keep
+  pushing plain `{x, y}` objects.
+
 ## 7. Gotchas & fairness rules
 
 1. **Vacating-tail exception** must mirror `tick()` (§1.1) everywhere.

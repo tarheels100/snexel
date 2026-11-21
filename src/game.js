@@ -96,7 +96,7 @@ const GAME_CONFIG = {
   // SnakeAI personalities (docs/snake-ai-plan.md §3/§4): presets wrap engine
   // opts; these knobs merge over them — tune freely (localStorage in D3).
   ai: {
-    demo:   { shortcutSlack: 6, jitter: 1 },
+    demo:   { shortcutSlack: 6, jitter: 1, specialWeight: 0.5, specialMaxDist: 8 },
     baby:   { jitter: 0.35, hesitation: 0.3, slack: 1 },
     cpu:    { easy: { jitter: 0.8 }, normal: { jitter: 0.4, slack: 2 },
               hard: { shortcutSlack: 2, oppLookahead: 3 } },
@@ -779,7 +779,7 @@ let demoEngine = true;
 let demoTag = "AI: ENGINE";
 const DEMO_AI_OPTS = window.SnakeAI
   ? SnakeAI.presets("demo", GAME_CONFIG.ai.demo)
-  : { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3 };
+  : { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3, specialWeight: 0.5, specialMaxDist: 8 };
 // Phase C preset "demo" (engine optional so game-only vm sandboxes load):
 // Hamiltonian cycle tier + conservative shortcuts; if hazards (pineapple/
 // banana zones) block the cycle it degrades to the BFS tier — trap deaths

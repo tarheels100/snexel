@@ -328,6 +328,23 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   const v = versus(5, 12, 200);
   check("versus soak (hard vs normal, wrap+poops): both alive >= 50 ticks, both scored",
     v.aTicks >= 50 && v.bTicks >= 50 && v.aScore > 0 && v.bScore > 0);
+
+  // demo chill behavior around spectacle fruit
+  check("blast zones are noise when no rival exists; demo keeps the cycle with a pineapple on board",
+    D.dangerMap(pine([]))[K(3, 4)] === 1 && (() => {
+      AI.choose(W({ gw: 8, gh: 8, body: [P(1, 1), P(2, 1), P(3, 1)], dir: "l", foods: [P(6, 6)], pineapples: [P(4, 4)] }), pDemo);
+      return D.lastTier().tier === "cycle";
+    })());
+  const demoFar = W({ gw: 32, gh: 24, body: [P(5, 5), P(5, 6)], dir: "u", foods: [P(6, 5)], pineapples: [P(20, 12)] });
+  const demoNone = W({ gw: 32, gh: 24, body: [P(5, 5), P(5, 6)], dir: "u", foods: [P(6, 5)] });
+  check("demo sweep is untouched by a distant pineapple (cycle stays, target ignores it)",
+    AI.choose(demoFar, pDemo) === AI.choose(demoNone, pDemo) && D.lastTier().tier === "cycle");
+  const gateOpts = { danger: true, floodFill: true, slack: 2, jitter: 1, specialWeight: 0.5, specialMaxDist: 8 };
+  const wander = W({ gw: 32, gh: 24, body: [P(5, 5), P(5, 6)], dir: "u", foods: [], pineapples: [] });
+  const farSpecial = W({ gw: 32, gh: 24, body: [P(5, 5), P(5, 6)], dir: "u", foods: [], pineapples: [P(20, 12)] });
+  const nearSpecial = W({ gw: 32, gh: 24, body: [P(5, 5), P(5, 6)], dir: "u", foods: [], pineapples: [P(6, 6)] });
+  check("special gate: distant spectacle ignored, nearby one chased, weight softened",
+    AI.choose(farSpecial, gateOpts) === AI.choose(wander, gateOpts) && AI.choose(nearSpecial, gateOpts) === "r");
 }
 
 // ---- D1 wiring: game.js + engine share one scope (classic scripts) ----
@@ -412,5 +429,5 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("hatch pop silent in menu demo; plays in real play", es.menuGains === 0 && es.playNodes > 0 && es.hatched);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (37 checks)");
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (39 checks)");
 process.exit(fails ? 1 : 0);

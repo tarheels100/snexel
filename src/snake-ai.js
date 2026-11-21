@@ -20,6 +20,7 @@
   const DIRS = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] };
   const LETHAL = 1e6;          // big finite score, not Infinity (sortable)
   const HIGH = 40;
+  const LOW = 1;               // blast-zone noise when no rival can detonate it
 
   function mulberry32(seed) {
     let a = seed >>> 0;
@@ -155,14 +156,14 @@
       for (let x = 0; x < w.gw; x++) for (let y = 0; y < w.gh; y++) {
         if (Math.abs(x - p.x) + Math.abs(y - p.y) <= r) {
           const k = key(x, y);
-          if (!fruitAt(w, x, y)) m[k] = foeNear ? LETHAL : HIGH;
+          if (!fruitAt(w, x, y)) m[k] = foeNear ? LETHAL : (w.foes.length ? HIGH : LOW);
         }
       }
     }
     // banana: whole row + column cross-fire
     for (const b of w.bananas) {
       const foeNear = kill && foeReach(b.x, b.y) <= zoneReach;
-      const set = foeNear ? LETHAL : HIGH;
+      const set = foeNear ? LETHAL : (w.foes.length ? HIGH : LOW);
       for (let x = 0; x < w.gw; x++) if (!fruitAt(w, x, b.y)) m[key(x, b.y)] = set;
       for (let y = 0; y < w.gh; y++) if (!fruitAt(w, b.x, y)) m[key(b.x, y)] = set;
     }
@@ -279,12 +280,16 @@
     //      (jumping over our own body = future collision)
     //   3. slack: cycle distance from landing forward to the tail >= newLen + slackK
     //      (never outrun the tail around the loop)
-    const fruits = [...w.foods, ...w.pineapples, ...w.bananas];
+    const fruits = [...w.foods.map(p => ({ x: p.x, y: p.y, kind: "food" })),
+      ...w.pineapples.map(p => ({ x: p.x, y: p.y, kind: "pineapple" })),
+      ...w.bananas.map(p => ({ x: p.x, y: p.y, kind: "banana" }))];
     for (const f of fruits) {
       const fi = c.idx.get(key(f.x, f.y));
       if (fi === undefined || hazard(f.x, f.y)) continue;
       const fdist = fd(fi);
       if (fdist <= 1) continue;                    // adjacent food handled by strict/legal moves
+      const sw = f.kind === "food" ? 1 : (o.specialWeight ?? 1);
+      if (f.kind !== "food" && fdist > (o.specialMaxDist ?? Infinity)) continue;  // distant spectacle: don't leave the cycle for it
       for (const m of legal) {
         const j = c.idx.get(key(m.x, m.y));
         if (j === undefined) continue;
@@ -299,7 +304,7 @@
         const newLen = len + (fruitAt(w, m.x, m.y) ? 1 : 0);
         const toTail = (ti - j + N) % N;
         if (toTail < newLen + slackK) continue;    // would outrun the tail around the loop
-        if (!best || g > best.gain) best = { d: m.d, gain: g };
+        if (!best || g * sw > best.gain) best = { d: m.d, gain: g * sw };
       }
     }
     if (!best) return null;                        // hazards block the cycle ahead -> BFS tier
@@ -311,7 +316,7 @@
 
   /* ---- Phase C: presets (plan §3) — one engine, five personalities ---- */
   const PRESETS = {
-    demo:   { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3, fruitKill: true },
+    demo:   { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3, fruitKill: true, specialWeight: 0.5, specialMaxDist: 8 },
     baby:   { flee: true, avoidFruit: true, danger: true, floodFill: true, slack: 1, jitter: 0.35, hesitation: 0.3 },
     easy:   { danger: true, floodFill: false, jitter: 0.8 },                 // distracted human
     normal: { danger: true, floodFill: true, slack: 2, jitter: 0.4, zoneReach: 3, fruitKill: true },
@@ -390,7 +395,11 @@
     // Pick target: fruit with kill bonus, skipped when a foe is strictly
     // closer (we'd lose the race and get detonated instead).
     let best = null;
-    for (const f of [...w.foods, ...w.pineapples, ...w.bananas]) {
+    // kind is derived from the source array, so consumers don't have to tag
+    // their fruit objects (game.js pushes plain {x, y}).
+    for (const f of [...w.foods.map(p => ({ x: p.x, y: p.y, kind: "food" })),
+                     ...w.pineapples.map(p => ({ x: p.x, y: p.y, kind: "pineapple" })),
+                     ...w.bananas.map(p => ({ x: p.x, y: p.y, kind: "banana" }))]) {
       const mine = bfsDist(w, head, (x, y) => x === f.x && y === f.y, blocked);
       if (mine === Infinity) continue;
       let value = 1;
@@ -400,7 +409,13 @@
       const foeHeadInZone = w.foes.some(f2 =>
         f.kind === "pineapple" && Math.abs(f2.body[0].x - f.x) + Math.abs(f2.body[0].y - f.y) <= (o.pineappleRadius ?? 5)
         || f.kind === "banana" && (f2.body[0].x === f.x || f2.body[0].y === f.y));
-      if (foeHeadInZone && (f.kind === "pineapple" || f.kind === "banana")) value += 2; // instant-win move
+      if (f.kind === "pineapple" || f.kind === "banana") {
+        if (foeHeadInZone && o.fruitKill !== false) value = 3;        // guaranteed kill move
+        else {
+          if (mine > (o.specialMaxDist ?? Infinity)) continue;        // distant spectacle: ignore
+          value = o.specialWeight ?? 1;                               // mild interest (demo: 0.5)
+        }
+      }
       const score = value / Math.max(mine, 1);
       if (!best || score > best.score) best = { f, dist: mine, score };
     }
