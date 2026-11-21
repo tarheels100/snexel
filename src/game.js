@@ -765,7 +765,10 @@ function revealPoop(x, y) {
 // walker so engine upgrades are visible side-by-side in the attract mode.
 let demoEngine = true;
 let demoTag = "AI: ENGINE";
-const DEMO_AI_OPTS = { danger: true, floodFill: true, slack: 2, jitter: 2, zoneReach: 3 };
+const DEMO_AI_OPTS = { danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3 };
+// jitter 1 = always take the best-scored move: clean apple-tracking instead
+// of zig-zagging on distance ties. Trap deaths are intentional Phase A
+// behavior (restart-safe); death-proof sweeping arrives with Phase B.
 // one long-lived seeded RNG: advances per tick (organic) but reproducible.
 const demoBrainRng = window.SnakeAI ? window.SnakeAI.debug.mulberry32(20260120) : null;
 
