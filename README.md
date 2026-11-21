@@ -106,9 +106,11 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
 - Snake AI engine (`snake-ai-plan.md`) — demo snake, smarter catchable baby,
   and a later human-vs-CPU mode (`cpu-snake-plan.md` is superseded by it).
-  Phase A engine + D1 wiring shipped: the title-screen demo snake is driven by
-  `src/snake-ai.js`; press **Q** on the title screen to toggle it against the
-  old random walker (small `AI:` tag shows which brain is running)
+  Phases A+B shipped: the title-screen demo snake runs `src/snake-ai.js` on a
+  cached Hamiltonian cycle with checked shortcuts — it sweeps the board and
+  never traps itself; hazards degrade it to the BFS tier. Press **Q** on the
+  title screen to toggle it against the old random walker (small `AI:` tag
+  shows which brain is running)
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
   — stages 1–3 shipped; stage 4 (optional): swipe steering, orientation hint, haptics
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)

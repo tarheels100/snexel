@@ -251,12 +251,13 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
       const menuGains = gains;                      // all menu-gated -> 0
       state = "playing";
       eatSound(); poopSound(); levelSound(); boomSound(); bananaSound(); startJingle();
-      return { leftMenu, maxScore, tag: demoTag, eng: demoEngine, alive: players[0].alive, menuGains, playNodes: gains - menuGains };
+      return { leftMenu, maxScore, tag: demoTag, eng: demoEngine, alive: players[0].alive, menuGains, playNodes: gains - menuGains, cycleOpts: DEMO_AI_OPTS.cycle === true };
     })();`, sb2);
   const r = sb2.demoRes;
   check("D1 demo soak: engine menu snake stays in attract mode + eats (restart-safe)", !r.leftMenu && r.maxScore > 0);
   check("Q toggles demo brain: legacy walker still runs", r.tag === "AI: RANDOM" && r.eng === false && r.alive);
   check("menu demo SFX silent; gameplay eats still play", r.menuGains === 0 && r.playNodes > 0);
+  check("D1 demo switched to Phase B cycle tier (conservative shortcuts)", r.cycleOpts && !r.leftMenu);
 
   // egg/baby sounds gated in menu too: chirp/hatch/ding make no nodes there
   vm.runInNewContext(code + "\n" + eggSrc + "\n" + gameSrc + `
@@ -279,5 +280,5 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("hatch pop silent in menu demo; plays in real play", es.menuGains === 0 && es.playNodes > 0 && es.hatched);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (29 checks)");
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (30 checks)");
 process.exit(fails ? 1 : 0);

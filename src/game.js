@@ -769,10 +769,13 @@ function revealPoop(x, y) {
 // walker so engine upgrades are visible side-by-side in the attract mode.
 let demoEngine = true;
 let demoTag = "AI: ENGINE";
-const DEMO_AI_OPTS = { danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3 };
-// jitter 1 = always take the best-scored move: clean apple-tracking instead
-// of zig-zagging on distance ties. Trap deaths are intentional Phase A
-// behavior (restart-safe); death-proof sweeping arrives with Phase B.
+const DEMO_AI_OPTS = { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3 };
+// Phase B cycle tier: the demo sweeps the board on the Hamiltonian cycle and
+// only leaves it for checked shortcuts toward apples (conservative slack 6).
+// If hazards (pineapple/banana zones) block the cycle it degrades to the BFS
+// tier — trap deaths there restart the demo silently (attract-mode rule).
+// jitter 1 = always take the best-scored move; Q compares against the legacy
+// random walker.
 // one long-lived seeded RNG: advances per tick (organic) but reproducible.
 const demoBrainRng = window.SnakeAI ? window.SnakeAI.debug.mulberry32(20260120) : null;
 
