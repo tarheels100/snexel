@@ -198,6 +198,138 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("cycle tier with 30 scattered poops: alive 1000 ticks (skip or degrade)", !hazardous.dead && hazardous.ate > 0);
 }
 
+// ---- Phase C: presets, flee mode, opponent lookahead ----
+{
+  const TD = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] };
+  const pDemo = AI.presets("demo"), pBaby = AI.presets("baby"),
+        pEasy = AI.presets("easy"), pNormal = AI.presets("normal"), pHard = AI.presets("hard");
+  check("presets: shapes, knob merge, unknown throws",
+    pDemo.cycle && pBaby.flee && pBaby.avoidFruit && pEasy.floodFill === false &&
+    pHard.oppLookahead === 3 && AI.presets("demo", { shortcutSlack: 1 }).shortcutSlack === 1 &&
+    pDemo.shortcutSlack === 6 && (() => { try { AI.presets("nope"); return false; } catch (e) { return true; } })());
+
+  const wq = { gw: 8, gh: 8, wrap: false, body: [P(2, 2), P(2, 3), P(3, 3), P(3, 4)], dir: "u",
+    foods: [P(5, 2)], pineapples: [], bananas: [], poops: [], foes: [] };
+  check("preset decisions are deterministic", AI.choose(wq, pDemo) === AI.choose(wq, pDemo));
+
+  const trap = { gw: 6, gh: 6, wrap: false, body: [P(3, 1), P(2, 1), P(2, 2), P(2, 3), P(3, 3), P(4, 3), P(4, 2), P(4, 1)], dir: "l",
+    foods: [P(3, 2)], pineapples: [], bananas: [], poops: [], foes: [] };
+  check("easy dives into a self-trap; normal refuses it",
+    D.legalMoves(trap).includes("d") && AI.choose(trap, pEasy) === "d" && AI.choose(trap, pNormal) !== "d");
+
+  const corridor = { gw: 8, gh: 8, wrap: false, body: [P(0, 3), P(0, 4)], dir: "u",
+    foods: [], pineapples: [], bananas: [], poops: [],
+    foes: [{ body: [P(3, 4), P(4, 4), P(5, 4)], dir: "l", queue: ["l", "l", "l"] }] };
+  const dmH = D.dangerMap(corridor, { oppLookahead: 3 });
+  const dmB = D.dangerMap(corridor, {});
+  check("oppLookahead simulates the foe's queued path further ahead",
+    dmH["0,4"] >= 40 && dmB["0,4"] === undefined && dmB["1,4"] >= 40);
+
+  const enclosed = { gw: 8, gh: 8, wrap: false, body: [P(0, 0), P(1, 0), P(1, 1)], dir: "l",
+    foods: [], pineapples: [], bananas: [], poops: [],
+    foes: [{ body: [P(0, 1), P(0, 2), P(1, 2)], dir: "u", queue: [] }] };
+  check("cornered baby returns an illegal dir (caller freeze fallback)",
+    D.legalMoves(enclosed).length === 0 && !D.legalMoves(enclosed).includes(AI.choose(enclosed, pBaby)));
+
+  // scripted chase: human-style interceptor aims one cell ahead of the baby
+  function babyChase(seed) {
+    const gw = 32, gh = 24;
+    const rng = D.mulberry32(seed);
+    const poops = [], foods = [];
+    for (let i = 0; i < 8; i++) poops.push({ x: (rng() * gw) | 0, y: (rng() * gh) | 0 });
+    for (let i = 0; i < 3; i++) foods.push({ x: (rng() * gw) | 0, y: (rng() * gh) | 0 });
+    const S = (p) => p.x + "," + p.y;
+    let bBody = [{ x: 24, y: 12 }, { x: 23, y: 12 }, { x: 22, y: 12 }], bDir = "l";
+    let pBody = [{ x: 6, y: 6 }, { x: 7, y: 6 }, { x: 8, y: 6 }, { x: 9, y: 6 }, { x: 10, y: 6 }], pDir = "l";
+    const poopS = new Set(poops.map(S)), foodS = new Set(foods.map(S));
+    let viol = 0, froze = 0, fled = 0, captured = -1;
+    for (let t = 0; t < 160; t++) {
+      const bw = { gw, gh, wrap: false, body: bBody, dir: bDir, foods, pineapples: [], bananas: [], poops,
+        foes: [{ body: pBody, dir: pDir, queue: [] }], rng };
+      const bd = AI.choose(bw, pBaby);
+      const legal = D.legalMoves(bw);
+      if (!legal.length) froze++;                          // cornered: freeze (baby stays)
+      else if (!legal.includes(bd)) viol++;                // stepped somewhere illegal = bug
+      else { bDir = bd; bBody.unshift({ x: bBody[0].x + TD[bd][0], y: bBody[0].y + TD[bd][1] }); bBody.pop(); }
+      if (foodS.has(S(bBody[0])) || poopS.has(S(bBody[0]))) viol++;
+
+      const tx = bBody[0].x + TD[bDir][0], ty = bBody[0].y + TD[bDir][1];   // intercept ahead of head
+      let bestStep = null, bestD = 1e9;
+      for (const d of ["u", "d", "l", "r"]) {
+        if (d === AI.debug.REV[pDir]) continue;
+        const nx = pBody[0].x + TD[d][0], ny = pBody[0].y + TD[d][1];
+        if (nx < 0 || nx >= gw || ny < 0 || ny >= gh || poopS.has(nx + "," + ny)) continue;
+        if (pBody.slice(1, pBody.length - 1).some(c => c.x === nx && c.y === ny)) continue;
+        const dist = Math.abs(nx - tx) + Math.abs(ny - ty);
+        if (dist < bestD) { bestD = dist; bestStep = { d, nx, ny }; }
+      }
+      const before = Math.abs(pBody[0].x - bBody[0].x) + Math.abs(pBody[0].y - bBody[0].y);
+      if (bestStep) { pDir = bestStep.d; pBody.unshift({ x: bestStep.nx, y: bestStep.ny }); pBody.pop(); }
+      if (bBody.some(c => c.x === pBody[0].x && c.y === pBody[0].y)) { captured = t; break; }
+      const after = Math.abs(pBody[0].x - bBody[0].x) + Math.abs(pBody[0].y - bBody[0].y);
+      if (after > before) fled++;
+    }
+    return { captured, viol, froze, fled };
+  }
+  const ch1 = babyChase(3), ch2 = babyChase(11), ch3 = babyChase(42);
+  check("baby preset: flees, never touches fruit/poop/rival, zero illegal steps",
+    ch1.viol === 0 && ch2.viol === 0 && ch3.viol === 0);
+  check("baby stays catchable: scripted chase captures within 120 ticks (3 seeds)",
+    ch1.captured >= 0 && ch1.captured <= 120 && ch2.captured >= 0 && ch2.captured <= 120 &&
+    ch3.captured >= 0 && ch3.captured <= 120 && ch1.fled > 5);
+
+  // hard vs normal head-to-head soak (wrap ON, poops ON)
+  function versus(seedA, seedB, ticks) {
+    const gw = 32, gh = 24;
+    const rngA = D.mulberry32(seedA), rngB = D.mulberry32(seedB);
+    let aBody = [{ x: 3, y: 3 }, { x: 2, y: 3 }, { x: 1, y: 3 }, { x: 1, y: 2 }], aDir = "r", aAlive = true, aScore = 0, aTicks = 0;
+    let bBody = [{ x: 28, y: 20 }, { x: 29, y: 20 }, { x: 30, y: 20 }, { x: 30, y: 19 }], bDir = "l", bAlive = true, bScore = 0, bTicks = 0;
+    const poops = []; for (let i = 0; i < 12; i++) poops.push({ x: (rngA() * gw) | 0, y: (rngA() * gh) | 0 });
+    const foods = []; const S = (p) => p.x + "," + p.y;
+    const spawn = () => {
+      for (let t = 0; t < 100; t++) {
+        const x = (rngB() * gw) | 0, y = (rngB() * gh) | 0, k = x + "," + y;
+        if (poops.some(p => S(p) === k) || foods.some(f => S(f) === k) ||
+          (aAlive && aBody.some(b => S(b) === k)) || (bAlive && bBody.some(b => S(b) === k))) continue;
+        foods.push({ x, y }); return;
+      }
+    };
+    spawn(); spawn();
+    for (let t = 0; t < ticks; t++) {
+      if (!aAlive && !bAlive) break;
+      const aw = { gw, gh, wrap: true, body: aBody, dir: aDir, foods, pineapples: [], bananas: [], poops,
+        foes: bAlive ? [{ body: bBody, dir: bDir, queue: [] }] : [], rng: rngA };
+      const bw = { gw, gh, wrap: true, body: bBody, dir: bDir, foods, pineapples: [], bananas: [], poops,
+        foes: aAlive ? [{ body: aBody, dir: aDir, queue: [] }] : [], rng: rngB };
+      const ad = aAlive ? AI.choose(aw, pHard) : null;
+      const bd = bAlive ? AI.choose(bw, pNormal) : null;
+      const na = ad ? { x: (aBody[0].x + TD[ad][0] + gw) % gw, y: (aBody[0].y + TD[ad][1] + gh) % gh } : null;
+      const nb = bd ? { x: (bBody[0].x + TD[bd][0] + gw) % gw, y: (bBody[0].y + TD[bd][1] + gh) % gh } : null;
+      const eatA = !!(na && foods.some(f => S(f) === S(na))), eatB = !!(nb && foods.some(f => S(f) === S(nb)));
+      const occA = new Set(aBody.slice(1, eatA ? aBody.length : aBody.length - 1).map(S));
+      const occB = new Set(bBody.slice(1, eatB ? bBody.length : bBody.length - 1).map(S));
+      const poopS = new Set(poops.map(S));
+      const crush = !!(na && nb && na.x === nb.x && na.y === nb.y);
+      if (aAlive) {
+        if (crush || occA.has(S(na)) || (bAlive && occB.has(S(na))) || poopS.has(S(na))) aAlive = false;
+        else { aDir = ad; aBody.unshift(na); if (!eatA || aBody.length > 40) aBody.pop();
+          if (eatA) { aScore++; foods.splice(foods.findIndex(f => S(f) === S(na)), 1); poops.push(na); spawn(); }
+          aTicks++; }
+      }
+      if (bAlive) {
+        if (crush || occB.has(S(nb)) || (aAlive && occA.has(S(nb))) || poopS.has(S(nb))) bAlive = false;
+        else { bDir = bd; bBody.unshift(nb); if (!eatB || bBody.length > 40) bBody.pop();
+          if (eatB) { bScore++; foods.splice(foods.findIndex(f => S(f) === S(nb)), 1); poops.push(nb); spawn(); }
+          bTicks++; }
+      }
+    }
+    return { aTicks, bTicks, aScore, bScore };
+  }
+  const v = versus(5, 12, 200);
+  check("versus soak (hard vs normal, wrap+poops): both alive >= 50 ticks, both scored",
+    v.aTicks >= 50 && v.bTicks >= 50 && v.aScore > 0 && v.bScore > 0);
+}
+
 // ---- D1 wiring: game.js + engine share one scope (classic scripts) ----
 {
   const noop = () => {};
@@ -280,5 +412,5 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("hatch pop silent in menu demo; plays in real play", es.menuGains === 0 && es.playNodes > 0 && es.hatched);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (30 checks)");
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (37 checks)");
 process.exit(fails ? 1 : 0);

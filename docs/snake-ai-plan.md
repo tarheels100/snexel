@@ -176,7 +176,7 @@ random where game code is involved):
 |---|---|---|---|
 | A — core engine: legal moves, danger map, BFS, flood-fill | ~150 lines | 3–4 h | ✅ done (`src/snake-ai.js` + `tests/ai-test.js`, 20 checks) |
 | B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h | ✅ done (`snake-ai.js` cycle tier + 5 soak tests) |
-| C — presets, personality knobs, extra `ai-test.js` cases | ~180 lines | 2–3 h | pending |
+| C — presets, personality knobs, extra `ai-test.js` cases | ~180 lines | 2–3 h | ✅ done (`snake-ai.js` presets/flee/opp + 7 checks) |
 | D1 — demo snake wiring + browser check | ~20 lines | 1 h | ✅ done (`game.js?v=41` + `snake-ai.js?v=1`) |
 | D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h | pending |
 | D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h | pending |
@@ -249,6 +249,31 @@ file as usual (`snake-ai.js?v=1…`).
   closed adjacency; 20×16 cached, 32×23 → null; strict follower 1000 ticks
   zero deaths + always cycle tier; slack-2 shortcuts 1000 ticks alive with
   real jumps (gain > 1); 30 scattered poops 1000 ticks alive (skip/degrade).
+
+**Phase C implementation notes** (shipped):
+- `SnakeAI.presets(name, knobs)` → opts object; `PRESETS`: demo (cycle,
+  conservative slack 6), baby (flee + avoidFruit + hesitation), easy
+  (no flood-fill, jitter 0.8), normal (BFS + flood-fill, jitter 0.4), hard
+  (cycle slack 2 + oppLookahead 3, jitter 0.1); knobs merge over the base
+  so `GAME_CONFIG.ai` tunes from game.js; unknown preset throws.
+- Flee mode (`opts.flee`): maximize BFS distance from nearest foe head,
+  hazard penalty via danger map, flood-fill survival filter (trapped →
+  maximize freedom, die last), hesitation (`opts.hesitation`: ~30% ticks
+  keep the old dir → readable + interceptable), jitter among runner-up.
+  Cornered (no legal non-fruit move) → returns an illegal dir so the
+  caller's freeze fallback keeps working (egg-baby §M2 semantics).
+- Opponent model (`opts.oppLookahead K`): danger map forward-simulates each
+  foe's queued dirs 1..max(2,K) ticks and marks projected cells HIGH.
+- `GAME_CONFIG.ai` in game.js: demo/baby/cpu{easy,normal,hard} knobs;
+  `DEMO_AI_OPTS = SnakeAI.presets("demo", GAME_CONFIG.ai.demo)` with an
+  engine-optional fallback so game-only vm sandboxes still load.
+- `ai-test.js` Phase C checks (all green, suite now 37): preset shapes +
+  knob merge + throw; deterministic preset decisions; easy dives a ring
+  trap normal refuses; oppLookahead marks deeper projected cells; cornered
+  baby returns illegal dir (freeze fallback); baby flees with zero illegal
+  steps across 3 seeds; **scripted interceptor chase captures the baby
+  within 120 ticks on all 3 seeds** (§3.1 pipeline guard); hard-vs-normal
+  versus soak (wrap+poops, 200 ticks): both alive ≥ 50 ticks, both scored.
 
 ## 7. Gotchas & fairness rules
 

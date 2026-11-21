@@ -93,6 +93,14 @@ const GAME_CONFIG = {
           tickMs: 130, winMs: 0.6, fxMs: 2.0, diedMs: 0.8, fadeMs: 0.5,
           countMs: 3.35,     // entry "3 2 1 GO!" (1s per digit + 0.35s GO), same as the resume countdown
           shrink: 5 },       // mini-win reward: main snake loses this many tail segments
+  // SnakeAI personalities (docs/snake-ai-plan.md §3/§4): presets wrap engine
+  // opts; these knobs merge over them — tune freely (localStorage in D3).
+  ai: {
+    demo:   { shortcutSlack: 6, jitter: 1 },
+    baby:   { jitter: 0.35, hesitation: 0.3, slack: 1 },
+    cpu:    { easy: { jitter: 0.8 }, normal: { jitter: 0.4, slack: 2 },
+              hard: { shortcutSlack: 2, oppLookahead: 3 } },
+  },
 };
 const cfg = () => (mode === 2 ? GAME_CONFIG.versus : GAME_CONFIG.solo);
 
@@ -769,13 +777,14 @@ function revealPoop(x, y) {
 // walker so engine upgrades are visible side-by-side in the attract mode.
 let demoEngine = true;
 let demoTag = "AI: ENGINE";
-const DEMO_AI_OPTS = { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3 };
-// Phase B cycle tier: the demo sweeps the board on the Hamiltonian cycle and
-// only leaves it for checked shortcuts toward apples (conservative slack 6).
-// If hazards (pineapple/banana zones) block the cycle it degrades to the BFS
-// tier — trap deaths there restart the demo silently (attract-mode rule).
-// jitter 1 = always take the best-scored move; Q compares against the legacy
-// random walker.
+const DEMO_AI_OPTS = window.SnakeAI
+  ? SnakeAI.presets("demo", GAME_CONFIG.ai.demo)
+  : { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3 };
+// Phase C preset "demo" (engine optional so game-only vm sandboxes load):
+// Hamiltonian cycle tier + conservative shortcuts; if hazards (pineapple/
+// banana zones) block the cycle it degrades to the BFS tier — trap deaths
+// there restart the demo silently (attract-mode rule). Q compares against
+// the legacy random walker.
 // one long-lived seeded RNG: advances per tick (organic) but reproducible.
 const demoBrainRng = window.SnakeAI ? window.SnakeAI.debug.mulberry32(20260120) : null;
 

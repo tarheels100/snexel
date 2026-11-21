@@ -10,8 +10,10 @@
  *
  * SnakeAI.choose(world, opts) -> "u"|"d"|"l"|"r".
  * opts: { danger, floodFill, slack, jitter, pineappleRadius, zoneReach,
- *         fruitKill, cycle, shortcutSlack, cycleHazard }  (all optional;
- *         Phase C presets will wrap them).
+ *         fruitKill, cycle, shortcutSlack, cycleHazard, flee, avoidFruit,
+ *         hesitation, oppLookahead }  (all optional).
+ * SnakeAI.presets(name, knobs) -> opts for: demo | baby | easy | normal | hard
+ * (plan §3). Knobs merge over the preset base, so GAME_CONFIG.ai can tune.
  */
 (function () {
   const REV = { u: "d", d: "u", l: "r", r: "l" };
@@ -164,13 +166,16 @@
       for (let x = 0; x < w.gw; x++) if (!fruitAt(w, x, b.y)) m[key(x, b.y)] = set;
       for (let y = 0; y < w.gh; y++) if (!fruitAt(w, b.x, y)) m[key(b.x, y)] = set;
     }
-    // foe projections: 1 and 2 ticks ahead (contested cells)
+    // foe projections: queued-dir forward simulation, 1..K ticks ahead.
+    // K = max(2, oppLookahead): base 2 ticks is the contested-cell tier;
+    // hard tier raises K to cut off / dodge rival routes further ahead.
+    const K = Math.max(2, o.oppLookahead ?? 0);
     for (const f of w.foes) {
       let p = f.body[0];
-      for (let step = 1; step <= 2; step++) {
-        const d = step === 1
-          ? (f.queue && f.queue.length ? f.queue[0] : f.dir)
-          : f.dir;
+      const seq = f.queue && f.queue.length ? f.queue : [f.dir];
+      for (let step = 1; step <= K; step++) {
+        const d = seq[step - 1] ?? f.dir;
+        if (!d) break;
         const n = neighbors(w, p).find(n => n.d === d);
         if (!n) break;
         const k = key(n.x, n.y);
@@ -304,6 +309,58 @@
 
   let debugStats = { gain: 1, tier: "bfs" };    // last choose() tier, for tests
 
+  /* ---- Phase C: presets (plan §3) — one engine, five personalities ---- */
+  const PRESETS = {
+    demo:   { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3, fruitKill: true },
+    baby:   { flee: true, avoidFruit: true, danger: true, floodFill: true, slack: 1, jitter: 0.35, hesitation: 0.3 },
+    easy:   { danger: true, floodFill: false, jitter: 0.8 },                 // distracted human
+    normal: { danger: true, floodFill: true, slack: 2, jitter: 0.4, zoneReach: 3, fruitKill: true },
+    hard:   { cycle: true, shortcutSlack: 2, danger: true, floodFill: true, slack: 2, jitter: 0.1, fruitKill: true, zoneReach: 4, oppLookahead: 3 },
+  };
+  function presets(name, knobs) {
+    const base = PRESETS[name];
+    if (!base) throw new Error("unknown SnakeAI preset: " + name);
+    return Object.assign({}, base, knobs || {});
+  }
+
+  /* ---- Phase C: flee mode (baby preset, plan §3.1) ----
+   * Maximize BFS distance from the nearest foe head; never enters fruit
+   * (avoidFruit) or hazards; flood-fill keeps it out of dead-end corners
+   * until genuinely cornered (caller's freeze fallback stays). Hesitation
+   * keeps the old direction ~30% of ticks so a human can intercept — the
+   * baby must stay catchable or the egg→mini-game pipeline dies.
+   */
+  function fleeMove(w, o, rng, dm) {
+    const legalAll = legalMoves(w, o);
+    const legal = o.avoidFruit ? legalAll.filter(m => !fruitAt(w, m.x, m.y)) : legalAll;
+    if (!legal.length) return null;                    // cornered -> caller fallback
+    if (w.dir && rng() < (o.hesitation ?? 0)) {
+      const keep = legal.find(m => m.d === w.dir);
+      if (keep) return keep.d;
+    }
+    const heads = (w.foes || []).map(f => f.body[0]);
+    const len = w.body.length;
+    let scored = legal.map(m => {
+      let s = 0;
+      if (heads.length) {
+        s = Math.min(...heads.map(h => bfsDist(w, m, (x, y) => x === h.x && y === h.y, hazardBlocked(w))));
+      }
+      const p = dm[key(m.x, m.y)];
+      if (p !== undefined) s -= p;                     // steer clear of blast zones/poops
+      const reach = o.floodFill ? reachableAfter(w, m, o).count : 0;
+      return { d: m.d, s, reach };
+    });
+    if (o.floodFill) {
+      const need = len + (o.slack ?? 1);
+      const safe = scored.filter(e => e.reach >= need);
+      if (safe.length) scored = safe;
+      else scored.sort((a, b) => b.reach - a.reach);   // trapped: maximize freedom, die last
+    }
+    scored.sort((a, b) => b.s - a.s);
+    if (rng() < (o.jitter ?? 0) && scored.length > 1) return scored[1].d;
+    return scored[0].d;
+  }
+
   function choose(w, opts) {
     const o = opts || {};
     debugStats = { gain: 1, tier: "bfs" };
@@ -316,6 +373,13 @@
       }
     }
     const rng = w.rng || o.rng || mulberry32(1);
+    if (o.flee) {
+      debugStats.tier = "flee";
+      const fdm = o.danger === false ? {} : dangerMap(w, o);
+      const fd = fleeMove(w, o, rng, fdm);
+      if (fd) return fd;
+      return w.dir ? REV[w.dir] : "r";                 // cornered: caller's freeze fallback
+    }
     const moves = legalMoves(w, o);
     if (!moves.length) return REV[w.dir];   // cornered: accept death
 
@@ -368,6 +432,7 @@
 
   const T = {
     choose,
+    presets,
     debug: {
       legalMoves: (w, o) => legalMoves(w, o).map(m => m.d),
       occupancy: (w) => occupancy(w),
@@ -379,6 +444,7 @@
       cycleFor: (gw, gh) => buildCycle(gw, gh),      // fresh build (uncached) for cover tests
       cycleIndex: (w, x, y) => { const c = cycleFor(w.gw, w.gh); return c ? c.idx.get(key(x, y)) : undefined; },
       lastTier: () => debugStats,
+      PRESETS,
     },
   };
   window.SnakeAI = T;
