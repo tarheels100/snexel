@@ -261,10 +261,10 @@
   const hatchBurst = (x, y) => puff(x, y, ["#efe6cf", "#fff9ec", "#ffd93b", "#b6f79a"], 8, 70, 30);
   const babyBurst  = (x, y) => puff(x, y, ["#7ee06a", "#b6f79a", "#fff9ec"], 10, 90, 25);
 
-  /* ---- sounds (all respect sfxMuted; audio globals from game.js) ---- */
+  /* ---- sounds (all respect sfxMuted + the silent menu demo; audio globals from game.js) ---- */
 
   function eggChirp() {
-    if (!audioCtx || sfxMuted) return;
+    if (!audioCtx || sfxMuted || state === "menu") return;
     const t = audioCtx.currentTime;
     [[620, 0.0], [860, 0.09]].forEach(([f, at], i) => {
       const o = audioCtx.createOscillator();
@@ -282,7 +282,7 @@
 
   // quick rising pop + tiny leaf rustle — quieter than the eat chomp
   function hatchPop() {
-    if (!audioCtx || sfxMuted) return;
+    if (!audioCtx || sfxMuted || state === "menu") return;
     const t = audioCtx.currentTime;
     const g1 = audioCtx.createGain();
     g1.connect(audioCtx.destination);
@@ -307,7 +307,7 @@
 
   // brighter three-note ding than levelSound — announces the capture event
   function captureDing() {
-    if (!audioCtx || sfxMuted) return;
+    if (!audioCtx || sfxMuted || state === "menu") return;
     const t = audioCtx.currentTime;
     [880, 1174, 1396].forEach((f, i) => {
       const o = audioCtx.createOscillator();

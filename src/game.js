@@ -121,6 +121,10 @@ let mode = 1;
 let poopMode = localStorage.getItem("snake_poop") === "1";
 let musicMuted = localStorage.getItem("snake_music_muted") === "1";
 let sfxMuted = localStorage.getItem("snake_sfx_muted") === "1";
+
+// attract-mode demo is silent: title music keeps chilling, but the menu demo
+// snake never plays eat/plop/level/boom/jingle SFX (demoQuiet gates them).
+function demoQuiet() { return state === "menu"; }
 let wrapMode = localStorage.getItem("snake_wrap") === "1";   // edges are portals, not walls
 
 // Music track: "retro" = the handmade 4-bar chiptune loop below;
@@ -193,7 +197,7 @@ function ensureAudio() {
 
 // 8-bit "pickup" chomp: square-wave rising arpeggio + low saw crunch layer
 function eatSound() {
-  if (!audioCtx || sfxMuted) return;
+  if (!audioCtx || sfxMuted || demoQuiet()) return;
   const t = audioCtx.currentTime;
 
   const g1 = audioCtx.createGain();
@@ -225,7 +229,7 @@ function eatSound() {
 // subtle "plop": quiet triangle drop + tiny splat, quieter than eatSound.
 // Plays when the pile actually becomes visible (bulge slides off the tail).
 function poopSound() {
-  if (!audioCtx || sfxMuted) return;
+  if (!audioCtx || sfxMuted || demoQuiet()) return;
   const t = audioCtx.currentTime;
 
   const g1 = audioCtx.createGain();
@@ -255,7 +259,7 @@ function poopSound() {
 
 // Rising arpeggio fanfare on a speed level-up — brighter and quicker than eat.
 function levelSound() {
-  if (!audioCtx || sfxMuted) return;
+  if (!audioCtx || sfxMuted || demoQuiet()) return;
   const t = audioCtx.currentTime;
   [659.25, 880, 1046.5].forEach((f, i) => {
     const o = audioCtx.createOscillator();
@@ -575,7 +579,7 @@ function captureHandoff() {
 
 // bright 3-note square arpeggio so the overlay arrival is unmistakable (plan §6)
 function startJingle() {
-  if (!audioCtx || sfxMuted) return;
+  if (!audioCtx || sfxMuted || demoQuiet()) return;
   const t = audioCtx.currentTime;
   [523.25, 659.25, 783.99].forEach((f, i) => {
     const g = audioCtx.createGain();
@@ -721,7 +725,7 @@ function poopAt(x, y) {
 // reveal the pile hidden under a bulged segment, with its plop
 // deep boom + noise crunch, straight to master (independent of music mute)
 function boomSound() {
-  if (!audioCtx || sfxMuted) return;
+  if (!audioCtx || sfxMuted || demoQuiet()) return;
   const t = audioCtx.currentTime;
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
@@ -1072,7 +1076,7 @@ function crossBurst(x, y) {
 
 // double zap whoosh + deep boom tail + noise sweep (master bus, ignores music mute)
 function bananaSound() {
-  if (!audioCtx || sfxMuted) return;
+  if (!audioCtx || sfxMuted || demoQuiet()) return;
   const t = audioCtx.currentTime;
   for (let k = 0; k < 2; k++) {
     const o = audioCtx.createOscillator();

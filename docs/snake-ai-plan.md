@@ -222,6 +222,11 @@ file as usual (`snake-ai.js?v=1…`).
   `initMenu()` instead of game-over — the title screen never shows "OVER".
   Verified by a 200-tick menu soak in `ai-test.js` (engine ate, stayed in
   attract mode, Q toggle + legacy path green).
+- **Attract mode is silent**: `demoQuiet()` gates every SFX (eat/plop/level/
+  boom/banana/jingle + egg chirp/hatch/ding) while `state === "menu"` — the
+  title music keeps chilling but the demo snake makes no noise. Gameplay SFX
+  untouched; `ai-test.js` proves zero audio nodes built in menu, nodes built
+  in play.
 
 ## 7. Gotchas & fairness rules
 

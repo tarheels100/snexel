@@ -151,6 +151,19 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
     Math: Object.create(Math, { random: { value: () => demoRng() } }),
   };
   const gameSrc = fs.readFileSync(path.join(__dirname, "..", "src", "game.js"), "utf8");
+  const eggSrc = fs.readFileSync(path.join(__dirname, "..", "src", "egg-baby.js"), "utf8");
+  // fresh context for the egg-silence run: a vm context cannot re-declare
+  // game.js top-level consts, so this second run needs its own sandbox
+  const handlers3 = {};
+  const store3 = { snake_best: '0', snake_poop: '0', snake_music_muted: '0', snake_sfx_muted: '0', snake_wrap: '0', snake_track: 'chill' };
+  const sb3 = {
+    document: { getElementById: () => ({ getContext: () => stubCtx, textContent: '', innerHTML: '', style: {}, classList: { add: noop, remove: noop } }) },
+    window: { addEventListener: (ev, fn) => { handlers3[ev] = fn; }, requestAnimationFrame: noop },
+    localStorage: { getItem: k => store3[k] ?? '0', setItem: (k, v) => { store3[k] = String(v); } },
+    requestAnimationFrame: noop,
+    handlers: handlers3, Set, Number, console, performance: { now: () => 0 },
+    Math: Object.create(Math, { random: { value: D.mulberry32(202) } }),
+  };
   vm.runInNewContext(code + "\n" + gameSrc + `
     globalThis.demoRes = (() => {
       let leftMenu = false, maxScore = 0;
@@ -161,12 +174,44 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
       }
       handlers.keydown({ code: "KeyQ", preventDefault: () => {} });
       tick(); tick();
-      return { leftMenu, maxScore, tag: demoTag, eng: demoEngine, alive: players[0].alive };
+
+      // Demo silence: with an audio stub present, every SFX call in the menu
+      // must build ZERO nodes; the same calls in play must build nodes.
+      let gains = 0;
+      const fakeNode = () => ({ connect: () => {}, start: () => {}, stop: () => {}, gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {}, linearRampToValueAtTime: () => {} }, frequency: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} }, Q: { setValueAtTime: () => {} } });
+      audioCtx = { currentTime: 0, sampleRate: 22050, destination: {}, createGain: () => { gains++; return fakeNode(); }, createOscillator: () => fakeNode(), createBiquadFilter: () => fakeNode(), createBuffer: () => ({ copyToChannel: () => {}, getChannelData: () => new Array(22050).fill(0), length: 22050 }), createBufferSource: () => fakeNode() };
+      sfxMuted = false;
+      eatSound(); poopSound(); levelSound(); boomSound(); bananaSound(); startJingle();
+      const menuGains = gains;                      // all menu-gated -> 0
+      state = "playing";
+      eatSound(); poopSound(); levelSound(); boomSound(); bananaSound(); startJingle();
+      return { leftMenu, maxScore, tag: demoTag, eng: demoEngine, alive: players[0].alive, menuGains, playNodes: gains - menuGains };
     })();`, sb2);
   const r = sb2.demoRes;
   check("D1 demo soak: engine menu snake stays in attract mode + eats (restart-safe)", !r.leftMenu && r.maxScore > 0);
   check("Q toggles demo brain: legacy walker still runs", r.tag === "AI: RANDOM" && r.eng === false && r.alive);
+  check("menu demo SFX silent; gameplay eats still play", r.menuGains === 0 && r.playNodes > 0);
+
+  // egg/baby sounds gated in menu too: chirp/hatch/ding make no nodes there
+  vm.runInNewContext(code + "\n" + eggSrc + "\n" + gameSrc + `
+    globalThis.demoRes = (() => {
+      let gains = 0;
+      const fakeNode = () => ({ connect: () => {}, start: () => {}, stop: () => {}, gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {}, linearRampToValueAtTime: () => {} }, frequency: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} }, Q: { setValueAtTime: () => {} } });
+      audioCtx = { currentTime: 0, sampleRate: 22050, destination: {}, createGain: () => { gains++; return fakeNode(); }, createOscillator: () => fakeNode(), createBiquadFilter: () => fakeNode(), createBuffer: () => ({ copyToChannel: () => {}, getChannelData: () => new Array(22050).fill(0), length: 22050 }), createBufferSource: () => fakeNode() };
+      sfxMuted = false;
+      state = "menu";
+      EggBaby.debug.placeEgg(10, 12);
+      EggBaby.registerBite(); EggBaby.registerBite(); EggBaby.registerBite();   // hatch -> hatchPop (gated)
+      const menuGains = gains;
+      state = "playing";
+      EggBaby.debug.placeEgg(12, 10);
+      EggBaby.registerBite(); EggBaby.registerBite(); EggBaby.registerBite();   // hatch again -> nodes
+      return { menuGains, playNodes: gains - menuGains, hatched: EggBaby.hasBaby() };
+    })();
+  `, sb3);
+  const es = sb3.demoRes;
+  check("hatch pop silent in menu demo; plays in real play", es.menuGains === 0 && es.playNodes > 0 && es.hatched);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (22 checks)");
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (24 checks)");
 process.exit(fails ? 1 : 0);
