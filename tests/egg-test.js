@@ -25,7 +25,8 @@ const sandbox = {
   Math: Object.create(Math, { random: { value: () => box.v } }),
 };
 
-let src = fs.readFileSync(__dirname + '/../src/game.js', 'utf8') + '\n' +
+let src = fs.readFileSync(__dirname + '/../src/snake-ai.js', 'utf8') + '\n' +
+          fs.readFileSync(__dirname + '/../src/game.js', 'utf8') + '\n' +
           fs.readFileSync(__dirname + '/../src/egg-baby.js', 'utf8');
 
 src += `
@@ -69,15 +70,19 @@ box.v = 0.99;                       // no jitter picks; deterministic legal move
 foods[0].x = b.cells[0].x; foods[0].y = b.cells[0].y - 1;   // items hugging the head
 foods[1].x = b.cells[0].x + 1; foods[1].y = b.cells[0].y;
 let viol = 0;
+const heads = new Set();
 for (let i = 0; i < 200; i++) {
   EggBaby.debug.stepBaby();
   const h = b.cells[0];
+  heads.add(h.x + ',' + h.y);
   if (h.x < 0 || h.x >= GW || h.y < 0 || h.y >= GH) viol++;
   for (const f of foods) if (f.x === h.x && f.y === h.y) viol++;
   for (const p of players) if (p.alive) for (const c of p.cells) if (c.x === h.x && c.y === h.y) viol++;
   if (b.cells.length !== 3) viol++;
 }
 out.push('avoid: 200 steps violations=' + viol + ' len=' + b.cells.length + ' (expect 0, 3)');
+out.push('avoid moved: distinct heads=' + heads.size + ' (expect >10 — engine must actually move)');
+out.push('avoid tier: ' + EggBaby.debug.tier().tier + ' (expect flee)');
 
 // ---- M2: cornered baby freezes instead of dying ----
 b.cells = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
@@ -96,6 +101,37 @@ tick();                          // head (0,2); body still covers baby's cell (0
 out.push('capture: baby=' + (EggBaby.debug.baby() ? 'alive' : 'gone') + ' dingAt=' + (EggBaby.debug.captureAt() > 0) +
          ' handoff=' + EggBaby.takeHandoff() + ' again=' + EggBaby.takeHandoff() +
          ' state=' + state + ' score=' + players[0].score + ' (expect gone, true, ding true, handoff true then false, playing, score3)');
+
+// ---- D2: greedy chase vs the engine-fleeing baby — real capture check ----
+key('Escape'); key('Digit1');
+GAME_CONFIG.pineapple.chance = 0; GAME_CONFIG.banana.chance = 0;
+box.v = 0.99;
+EggBaby.debug.placeEgg(20, 20);
+for (let i = 0; i < 3; i++) {
+  foods[0].x = players[0].cells[0].x + DIRS[players[0].dir][0];
+  foods[0].y = players[0].cells[0].y + DIRS[players[0].dir][1];
+  tick();
+}
+const bb = EggBaby.debug.baby();
+players[0].cells = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
+players[0].dir = 'r'; players[0].turnQueue = [];
+const aw = (v, dv) => wrapMode ? (v + dv + GW) % GW : v + dv;
+let stepN = 0, caught = false;
+const chaseHeads = new Set();
+for (let t = 0; t < 140 && !caught; t++) {
+  EggBaby.debug.stepBaby();
+  const bh = bb.cells[0], ph = players[0].cells[0];
+  chaseHeads.add(bh.x + ',' + bh.y);
+  const dx = Math.sign(bh.x - ph.x), dy = Math.sign(bh.y - ph.y);
+  const cd = dx !== 0 ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u');
+  if (cd !== REV[players[0].dir]) players[0].dir = cd;
+  players[0].cells.unshift({ x: aw(ph.x, DIRS[cd][0]), y: aw(ph.y, DIRS[cd][1]) });
+  players[0].cells.pop();
+  stepN++;
+  if (bb.cells.some(c => players[0].cells.some(p => p.x === c.x && p.y === c.y))) caught = true;
+}
+out.push('chase: caught=' + caught + ' steps=' + stepN + ' tier=' + EggBaby.debug.tier().tier + ' (expect true, <=140, flee)');
+out.push('chase fled: distinct baby heads=' + chaseHeads.size + ' (expect >1 — baby actually fled)');
 
 // ---- M1: versus gate — eggs/baby never roll in 2P ----
 box.v = 0.99;                        // spawns land far from snakes

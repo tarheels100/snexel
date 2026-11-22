@@ -112,6 +112,9 @@
 
   /* ---- baby movement + AI ---- */
 
+  let babyOpts = null;   // cached "baby" preset (built once when SnakeAI exists)
+  let babyRng = null;    // seeded brain rng for the flee tier (deterministic tests)
+
   function updateBaby(dt, tickMs) {
     hatchBanner = Math.max(0, hatchBanner - dt);   // flash decays even if the baby vanishes mid-flash
     if (!baby || state !== "playing" || mode !== 1) return;
@@ -122,6 +125,40 @@
 
   function babyMove() {
     if (!baby) return;
+    if (window.SnakeAI) { engineBabyMove(); return; }
+    legacyBabyMove();
+  }
+
+  // Phase D2: flee tier from src/snake-ai.js. The baby maximizes BFS distance
+  // from the player head(s), avoids fruit/poops/blast zones, keeps flood-fill
+  // room, and hesitates (~30% of ticks keep the old direction) so the player
+  // can read it and intercept. Cornered -> freeze in place (stay catchable).
+  function engineBabyMove() {
+    const opts = babyOpts || (babyOpts = SnakeAI.presets("baby", GAME_CONFIG.ai.baby));
+    babyRng = babyRng || SnakeAI.debug.mulberry32(777);
+    const foes = [];
+    for (const p of players) if (p.alive) foes.push({ body: p.cells, dir: p.dir, queue: p.turnQueue });
+    const w = {
+      gw: GW, gh: GH, wrap: wrapMode,
+      body: baby.cells, dir: baby.dir,
+      foods, pineapples, bananas,
+      poops: poops.filter(p => p.visible),   // fairness: visible piles only
+      foes,
+      rng: babyRng,
+    };
+    const legal = SnakeAI.debug.legalMoves(w, opts);   // returns dir strings
+    const d = SnakeAI.choose(w, opts);
+    if (!legal.includes(d)) return;   // cornered: freeze (caller fallback)
+    baby.dir = d;
+    const head = baby.cells[0];
+    let nx = head.x + DIRS[d][0], ny = head.y + DIRS[d][1];
+    if (wrapMode) { nx = (nx + GW) % GW; ny = (ny + GH) % GH; }
+    baby.cells.unshift({ x: nx, y: ny });
+    baby.cells.pop();
+  }
+
+  // Fallback brain when the engine script isn't loaded (standalone sandboxes).
+  function legacyBabyMove() {
     const cand = Object.keys(DIRS).filter(d => d !== REV[baby.dir]);
     for (let i = cand.length - 1; i > 0; i--) {          // shuffle for tie-breaks
       const j = (Math.random() * (i + 1)) | 0;
@@ -339,6 +376,7 @@
       baby: () => baby,
       placeEgg: (x, y) => { eggs = [{ x, y }]; bitesSinceEgg = 0; },
       stepBaby: () => babyMove(),
+      tier: () => window.SnakeAI ? SnakeAI.debug.lastTier() : { tier: "legacy" },
       captureAt: () => captureAt,
       bites: () => bitesSinceEgg,
       handoff: () => pendingHandoff,
