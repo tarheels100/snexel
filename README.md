@@ -113,7 +113,10 @@ Each prints `label=value (expect …)` lines — compare against the expectation
   ships five presets (`demo`, `baby`, `easy`, `normal`, `hard`) including a
   flee mode tuned to keep the baby snake catchable. Press **Q** on the title
   screen to toggle the demo against the old random walker (small `AI:` tag
-  shows which brain is running)
+  shows which brain is running). **D2 shipped**: the baby snake now runs the
+  engine flee tier — it arcs away from your head, dodges fruit/piles/blast
+  zones, hesitates (~30% of ticks keep the old direction) so you can read it
+  and intercept, and freezes when cornered instead of dying
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
   — stages 1–3 shipped; stage 4 (optional): swipe steering, orientation hint, haptics
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)

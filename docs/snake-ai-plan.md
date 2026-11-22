@@ -178,7 +178,7 @@ random where game code is involved):
 | B — Hamiltonian cycle + shortcuts + cache | ~120 lines | 3–4 h | ✅ done (`snake-ai.js` cycle tier + 5 soak tests) |
 | C — presets, personality knobs, extra `ai-test.js` cases | ~180 lines | 2–3 h | ✅ done (`snake-ai.js` presets/flee/opp + 7 checks) |
 | D1 — demo snake wiring + browser check | ~20 lines | 1 h | ✅ done (`game.js?v=41` + `snake-ai.js?v=1`) |
-| D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h | pending |
+| D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h | ✅ done (`egg-baby.js?v=7` engine flee tier + chase/avoid soak) |
 | D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h | pending |
 
 Engine first (A→C ≈ 8–11 h) fully tested standalone; then wiring D1→D2; the
