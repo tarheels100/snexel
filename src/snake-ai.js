@@ -276,14 +276,65 @@
 
     // shortcuts: jump ahead along the cycle toward a fruit. Conditions:
     //   1. landing cell legal + hazard-free
-    //   2. every cycle cell SKIPPED (head..landing) unoccupied and hazard-free
-    //      (jumping over our own body = future collision)
+    //   2. every cycle cell SKIPPED (head..landing) unoccupied, hazard-free
+    //      AND fruit-free (never leapfrog an apple on the way)
     //   3. slack: cycle distance from landing forward to the tail >= newLen + slackK
     //      (never outrun the tail around the loop)
+    //   4. gain <= shortcutMax (demo: small darts only; grid-adjacent cells
+    //      in a serpentine can be ~49 cycle steps apart, so an uncapped
+    //      max-gain shortcut turns the sweep into endless straight dashes)
     const fruits = [...w.foods.map(p => ({ x: p.x, y: p.y, kind: "food" })),
       ...w.pineapples.map(p => ({ x: p.x, y: p.y, kind: "pineapple" })),
       ...w.bananas.map(p => ({ x: p.x, y: p.y, kind: "banana" }))];
+
+    // BFS dart: serpentine cycle order makes an apple 4 cells BELOW the head
+    // a ~600-step scenic detour (down to the bottom row, around, up the
+    // spine, back down) and always approaches cells from above. If a fruit
+    // is genuinely closer through open space than the sweep route, dart
+    // toward it — any direction, any approach side. Conditions: landing
+    // strictly reduces BFS distance vs the sweep route, landing within
+    // dartRange, skipped cycle segment safe + fruit-free, tail slack kept.
+    const blockedFn = (x, y) => occ.has(key(x, y)) || hazard(x, y);
+    const specialMax = o.specialMaxDist ?? Infinity;
+    const near = (pt) => {
+      let bestF = null;
+      for (const f of fruits) {
+        const dd = bfsDist(w, pt, (x, y) => x === f.x && y === f.y, blockedFn);
+        if (dd === Infinity) continue;
+        const val = f.kind === "food" ? 1 : (dd <= specialMax ? (o.specialWeight ?? 1) : 0);
+        if (val <= 0) continue;
+        const score = val / Math.max(dd, 1);
+        if (!bestF || score > bestF.score) bestF = { dist: dd, score };
+      }
+      return bestF;
+    };
+    const dartRange = o.dartRange ?? Infinity;
+    let dart = null;
+    const headNear = near(head);
+    if (headNear && headNear.dist <= dartRange) {
+      const strictNear = strict ? near(nx) : null;
+      const need = strictNear ? strictNear.dist : headNear.dist;
+      for (const m of legal) {
+        if (strict && m.d === strict.d) continue;
+        if (hazard(m.x, m.y)) continue;
+        const j = c.idx.get(key(m.x, m.y));
+        if (j === undefined) continue;
+        const g = fd(j);
+        if (g <= 1) continue;
+        const mNear = near({ x: m.x, y: m.y });
+        if (!mNear || mNear.dist >= need) continue;      // must beat the sweep
+        // A dart is one physical grid step - cycle skipped-segment rules do
+        // not apply (we are not leaping along the cycle). Darts always get a
+        // flood-fill room check (stricter than the BFS tier's, on purpose),
+        // regardless of the floodFill knob.
+        if (reachableAfter(w, { x: m.x, y: m.y }, o).count < len + (o.slack ?? 1)) continue;
+        if (!dart || mNear.dist < dart.dist) dart = { d: m.d, gain: g, dist: mNear.dist };
+      }
+      if (dart) best = { d: dart.d, gain: dart.gain };
+    }
+
     for (const f of fruits) {
+      if (dart) break;                                 // darting beats gain shortcuts
       const fi = c.idx.get(key(f.x, f.y));
       if (fi === undefined || hazard(f.x, f.y)) continue;
       const fdist = fd(fi);
@@ -294,11 +345,11 @@
         const j = c.idx.get(key(m.x, m.y));
         if (j === undefined) continue;
         const g = fd(j);
-        if (g <= 1 || g > fdist) continue;         // land at or before the fruit, never past it
+        if (g <= 1 || g > fdist || g > (o.shortcutMax ?? Infinity)) continue;  // land at or before the fruit, never past it
         let ok = true;
         for (let s = 1; s < g; s++) {
           const sc = c.pts[(hi + s) % N];
-          if (occ.has(key(sc.x, sc.y)) || hazard(sc.x, sc.y)) { ok = false; break; }
+          if (occ.has(key(sc.x, sc.y)) || hazard(sc.x, sc.y) || fruitAt(w, sc.x, sc.y)) { ok = false; break; }
         }
         if (!ok) continue;
         const newLen = len + (fruitAt(w, m.x, m.y) ? 1 : 0);
@@ -316,11 +367,11 @@
 
   /* ---- Phase C: presets (plan §3) — one engine, five personalities ---- */
   const PRESETS = {
-    demo:   { cycle: true, shortcutSlack: 6, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3, fruitKill: true, specialWeight: 0.5, specialMaxDist: 8 },
+    demo:   { cycle: true, shortcutSlack: 6, shortcutMax: 8, dartRange: 24, danger: true, floodFill: true, slack: 2, jitter: 1, zoneReach: 3, fruitKill: true, specialWeight: 0.5, specialMaxDist: 8 },
     baby:   { flee: true, avoidFruit: true, danger: true, floodFill: true, slack: 1, jitter: 0.35, hesitation: 0.3 },
     easy:   { danger: true, floodFill: false, jitter: 0.8 },                 // distracted human
     normal: { danger: true, floodFill: true, slack: 2, jitter: 0.4, zoneReach: 3, fruitKill: true },
-    hard:   { cycle: true, shortcutSlack: 2, danger: true, floodFill: true, slack: 2, jitter: 0.1, fruitKill: true, zoneReach: 4, oppLookahead: 3 },
+    hard:   { cycle: true, shortcutSlack: 2, shortcutMax: 24, dartRange: 10, danger: true, floodFill: true, slack: 2, jitter: 0.1, fruitKill: true, zoneReach: 4, oppLookahead: 3 },
   };
   function presets(name, knobs) {
     const base = PRESETS[name];

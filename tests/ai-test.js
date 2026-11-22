@@ -164,13 +164,14 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
       return null;
     };
     const f0 = freeCell(); if (f0) w.foods.push(f0);
-    let ate = 0, dead = false, maxGain = 1, tierBfs = 0;
-    for (let t = 0; t < ticks; t++) {
+    let ate = 0, dead = false, maxGain = 1, tierBfs = 0, tick = 0, poopSteps = 0;
+    for (tick = 0; tick < ticks; tick++) {
       const d = AI.choose(w, opts);
       const lt = D.lastTier();
       if (lt.tier !== "cycle") tierBfs++;
       if (lt.gain > maxGain) maxGain = lt.gain;
       const nx = w.body[0].x + TD[d][0], ny = w.body[0].y + TD[d][1];
+      if (poopS.has(nx + "," + ny)) poopSteps++;   // hazard-avoidance must never step on a pile
       const eats = w.foods.some(f => f.x === nx && f.y === ny);
       const occ = new Set(w.body.slice(1, eats ? w.body.length : w.body.length - 1).map(p => p.x + "," + p.y));
       if (nx < 0 || nx >= gw || ny < 0 || ny >= gh || occ.has(nx + "," + ny) || poopS.has(nx + "," + ny)) { dead = true; break; }
@@ -183,10 +184,10 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
         const f = freeCell(); if (f) w.foods.push(f);
       }
     }
-    return { dead, ate, maxGain, tierBfs, len: w.body.length };
+    return { dead, ate, maxGain, tierBfs, tick, poopSteps, len: w.body.length };
   }
 
-  const strict = soak({ cycle: true, shortcutSlack: 10000, danger: true }, 1000, 7, 0, 300);
+  const strict = soak({ cycle: true, shortcutSlack: 10000, danger: true, dartRange: 0 }, 1000, 7, 0, 300);
   check("strict cycle follower: 1000-tick solo soak, zero deaths, ate food, always cycle tier",
     !strict.dead && strict.ate > 0 && strict.tierBfs === 0);
 
@@ -194,8 +195,16 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   check("shortcuts (slack 2): alive 1000 ticks, real jumps used (gain > 1)",
     !fast.dead && fast.ate > 0 && fast.maxGain > 1);
 
-  const hazardous = soak({ cycle: true, shortcutSlack: 2, danger: true, floodFill: true, slack: 2 }, 1000, 99, 30, 80);
-  check("cycle tier with 30 scattered poops: alive 1000 ticks (skip or degrade)", !hazardous.dead && hazardous.ate > 0);
+  const hazardous = soak({ cycle: true, shortcutSlack: 2, danger: true, floodFill: true, slack: 2, dartRange: 0 }, 1000, 99, 30, 80);
+  check("cycle tier amid 30 scattered poops: never steps on a pile, eats, survives 800+ ticks",
+    hazardous.poopSteps === 0 && hazardous.ate > 0 && hazardous.tick >= 800);
+
+  // darty demo-style tier amid poops: eats much faster (darting), still never
+  // touches a pile; entrapment between fixed piles is legitimate death, so
+  // the honest guarantee is "long survival + perfect hazard avoidance".
+  const darty = soak({ ...AI.presets("demo"), shortcutSlack: 2, danger: true }, 1000, 99, 30, 80);
+  check("darty demo tier amid 30 poops: never steps on a pile, eats fast, survives 500+ ticks",
+    darty.poopSteps === 0 && darty.ate > 40 && darty.tick >= 500);
 }
 
 // ---- Phase C: presets, flee mode, opponent lookahead ----
@@ -345,6 +354,14 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   const nearSpecial = W({ gw: 32, gh: 24, body: [P(5, 5), P(5, 6)], dir: "u", foods: [], pineapples: [P(6, 6)] });
   check("special gate: distant spectacle ignored, nearby one chased, weight softened",
     AI.choose(farSpecial, gateOpts) === AI.choose(wander, gateOpts) && AI.choose(nearSpecial, gateOpts) === "r");
+
+  // BFS dart: serpentine cycle order must not detour around reachable fruit
+  const dartWorld = W({ gw: 32, gh: 24, body: [P(10, 5), P(11, 5), P(12, 5)], dir: "l", foods: [P(10, 9)] });
+  check("dart: apple below the head is chased straight down, not swept around the loop",
+    AI.choose(dartWorld, pDemo) === "d" && D.lastTier().tier === "cycle");
+  const farApple = W({ gw: 32, gh: 24, body: [P(10, 5), P(11, 5), P(12, 5)], dir: "l", foods: [P(20, 21)] });
+  check("dart bounded by dartRange: far apple keeps the serpentine sweep",
+    AI.choose(farApple, pDemo) === "l" && D.lastTier().gain === 1);
 }
 
 // ---- D1 wiring: game.js + engine share one scope (classic scripts) ----
@@ -427,7 +444,32 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   `, sb3);
   const es = sb3.demoRes;
   check("hatch pop silent in menu demo; plays in real play", es.menuGains === 0 && es.playNodes > 0 && es.hatched);
+
+  // wrap-mode demo soak: before the dart rule this starved (vertical dashes,
+  // 446-tick stall, apples unreachable in cycle order)
+  const storeW = { snake_best: '0', snake_poop: '0', snake_music_muted: '0', snake_sfx_muted: '0', snake_wrap: '1', snake_track: 'chill' };
+  const wrapRng = D.mulberry32(31);
+  const sb4 = {
+    document: { getElementById: () => ({ getContext: () => stubCtx, width: 256, height: 192, textContent: '', innerHTML: '', style: {}, classList: { add: noop, remove: noop } }) },
+    window: { addEventListener: () => {}, requestAnimationFrame: noop },
+    localStorage: { getItem: k => storeW[k] ?? '0', setItem: (k, v) => { storeW[k] = String(v); } },
+    requestAnimationFrame: noop,
+    Set, Number, console, performance: { now: () => 0 },
+    Math: Object.create(Math, { random: { value: () => wrapRng() } }),
+  };
+  vm.runInNewContext(code + "\n" + eggSrc + "\n" + gameSrc + `
+    globalThis.demoRes = (() => {
+      state = "menu"; initMenu();
+      let left = false, maxScore = 0;
+      for (let i = 0; i < 400; i++) {
+        tick();
+        if (state !== "menu" || !players[0].alive) left = true;
+        maxScore = players[0].score;
+      }
+      return { left, maxScore };
+    })();`, sb4);
+  check("wrap-mode demo soak (dart regression): stays attract + keeps eating", !sb4.demoRes.left && sb4.demoRes.maxScore >= 8);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (39 checks)");
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (42 checks)");
 process.exit(fails ? 1 : 0);
