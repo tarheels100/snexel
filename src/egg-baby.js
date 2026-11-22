@@ -137,7 +137,7 @@
     const opts = babyOpts || (babyOpts = SnakeAI.presets("baby", GAME_CONFIG.ai.baby));
     babyRng = babyRng || SnakeAI.debug.mulberry32(777);
     const foes = [];
-    for (const p of players) if (p.alive) foes.push({ body: p.cells, dir: p.dir, queue: p.turnQueue });
+    for (const p of players) if (p.alive) foes.push({ body: p.cells, dir: p.dir, queue: p.queue });
     const w = {
       gw: GW, gh: GH, wrap: wrapMode,
       body: baby.cells, dir: baby.dir,

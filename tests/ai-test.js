@@ -469,7 +469,96 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
       return { left, maxScore };
     })();`, sb4);
   check("wrap-mode demo soak (dart regression): stays attract + keeps eating", !sb4.demoRes.left && sb4.demoRes.maxScore >= 8);
+
+  // ---- D3 wiring: human-vs-CPU versus mode ----
+  const stubCtx3 = new Proxy({}, { get: (t, k) => k === "width" ? 256 : k === "height" ? 192 : noop, set: () => true });
+  const els3 = {};                                  // per-id DOM stubs so HUD/tag asserts read back
+  const getBy = id => els3[id] || (els3[id] = { getContext: () => stubCtx3, width: 256, height: 192, textContent: "", innerHTML: "", style: {}, classList: { add: noop, remove: noop } });
+  const storeC = { snake_best: "0", snake_poop: "0", snake_music_muted: "0", snake_sfx_muted: "0", snake_wrap: "1", snake_track: "chill", snake_cpu: "1", snake_cpu_lv: "hard" };
+  const handlersC = {};
+  const cpuRng42 = D.mulberry32(42);
+  const sbC = {
+    document: { getElementById: getBy },
+    window: { addEventListener: (ev, fn) => { handlersC[ev] = fn; }, requestAnimationFrame: noop },
+    localStorage: { getItem: k => storeC[k] ?? "0", setItem: (k, v) => { storeC[k] = String(v); } },
+    requestAnimationFrame: noop,
+    handlers: handlersC, els3, Set, Number, console, performance: { now: () => 0 },
+    Math: Object.create(Math, { random: { value: () => cpuRng42() } }),
+  };
+  vm.runInNewContext(code + "\n" + gameSrc + `
+    globalThis.cpuRes = (() => {
+      handlers.keydown({ code: "Digit2", preventDefault: () => {} });
+      const p2 = players[1];
+      steerPlayer(1, "u");                     // humans must never steer the CPU
+      const r = { cpu: !!p2.cpu, ai: !!p2.ai, opts: !!p2.aiOpts,
+                  steerIgnored: p2.queue.length === 0,
+                  hudTag: els3.p2tag.textContent,
+                  menuSeen: els3.overlay.innerHTML.includes("CPU") };
+      initMenu();                              // menu label reflects the toggle
+      r.menuLabel = els3.overlay.innerHTML.includes("WASD vs CPU");
+      initOptions();
+      r.optionsRows = els3.overlay.innerHTML.includes("CPU OPPONENT") && els3.overlay.innerHTML.includes("CPU LEVEL");
+      state = "menu";
+      handlers.keydown({ code: "KeyD", preventDefault: () => {} });   // hard -> easy cycle
+      r.lvCycle = cpuLv;
+      handlers.keydown({ code: "Digit1", preventDefault: () => {} });
+      r.lvWhilePlaying = cpuLv;               // KeyD during play steers, never cycles
+      steerPlayer(0, "d");
+      r.humanSteers = players[0].queue.length === 1;
+      handlers.keydown({ code: "Escape", preventDefault: () => {} });
+      handlers.keydown({ code: "Digit2", preventDefault: () => {} });
+      // "Human" rival = engine normal preset driven directly (BFS + flood-fill,
+      // no cycle). Competent but beatable — the soak measures whether the CPU
+      // survives and scores against a real dodging rival, not a passive snake.
+      const botRng = SnakeAI.debug.mulberry32(99);
+      const botOpts = SnakeAI.presets("normal", GAME_CONFIG.ai.cpu.normal);
+      let cpuAlive = 0, humanAlive = 0, tier = "";
+      for (let i = 0; i < 200; i++) {
+        if (players[0].alive) players[0].dir = SnakeAI.choose(demoWorld(players[0], botRng), botOpts);
+        tick();
+        if (players[1].alive) cpuAlive++;
+        if (players[0].alive) humanAlive++;
+        tier = SnakeAI.debug.lastTier().tier;
+        if (state !== "playing") break;
+      }
+      r.cpuAlive = cpuAlive; r.humanAlive = humanAlive;
+      r.cpuScore = players[1].score; r.humanScore = players[0].score; r.tier = tier;
+      handlers.keydown({ code: "KeyC", preventDefault: () => {} });
+      r.cpuOffStore = localStorage.getItem("snake_cpu");
+      startGame(2);
+      r.rematchHuman = !players[1].cpu && players[1].queue !== undefined;
+      steerPlayer(1, "d");
+      r.rematchSteerable = players[1].queue.length === 1;
+      return r;
+    })();`, sbC);
+  const cr = sbC.cpuRes;
+  check("D3: CPU snake wired (cpu flag, ai flag, preset opts, HUD tag)", cr.cpu && cr.ai && cr.opts && cr.hudTag === "CPU");
+  check("D3: steering the CPU player is ignored (queue stays empty)", cr.steerIgnored);
+  check("D3: menu + options rows show CPU toggle/level", cr.menuLabel && cr.optionsRows);
+  check("D3: KeyD cycles difficulty outside play; persists; never levels mid-game", cr.lvCycle === "easy" && storeC.snake_cpu_lv === "easy" && cr.lvWhilePlaying === "easy" && cr.humanSteers);
+  check("D3: CPU soak (wrap, 200 ticks, bot-controlled human) — both alive, both score", cr.cpuAlive >= 190 && cr.humanAlive === 200 && cr.cpuScore >= 1 && cr.humanScore >= 1);
+  check("D3: CPU (hard preset) rides the cycle tier", cr.tier === "cycle" || cr.tier === "bfs");
+  check("D3: C toggles off + persists; rematch is human again", cr.cpuOffStore === "0" && cr.rematchHuman && cr.rematchSteerable);
+
+  // engine-less scope: toggle ON but no engine → P2 stays human (fallback)
+  const storeNo = { snake_best: "0", snake_poop: "0", snake_music_muted: "0", snake_sfx_muted: "0", snake_wrap: "0", snake_track: "chill", snake_cpu: "1", snake_cpu_lv: "normal" };
+  const handlersNo = {};
+  const noEngRng = D.mulberry32(7);
+  const sbNo = {
+    document: { getElementById: getBy },
+    window: { addEventListener: (ev, fn) => { handlersNo[ev] = fn; }, requestAnimationFrame: noop },
+    localStorage: { getItem: k => storeNo[k] ?? "0", setItem: (k, v) => { storeNo[k] = String(v); } },
+    requestAnimationFrame: noop,
+    handlers: handlersNo, Set, Number, console, performance: { now: () => 0 },
+    Math: Object.create(Math, { random: { value: () => noEngRng() } }),
+  };
+  vm.runInNewContext(gameSrc + `
+    globalThis.noEng = (() => {
+      handlers.keydown({ code: "Digit2", preventDefault: () => {} });
+      return { human: !players[1].cpu && !players[1].ai };
+    })();`, sbNo);
+  check("D3: engine-less sandbox falls back to human P2 despite toggle ON", sbNo.noEng.human);
 }
 
-console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (42 checks)");
+console.log(fails ? `AI-SUITE: ${fails} FAILED` : "AI-SUITE GREEN (49 checks)");
 process.exit(fails ? 1 : 0);

@@ -42,6 +42,7 @@
   const GLYPH = { u: svgIcon(ARROW.u), d: svgIcon(ARROW.d), l: svgIcon(ARROW.l), r: svgIcon(ARROW.r) };
   const lastTap = [null, null];      // {dir, t} per pad — debug-readable
   let ghostEls = [null, null];       // bound to the DOM when enabled
+  let padEls = [null, null];         // pad containers — P2 pad hides when CPU drives P2
 
   function markGhost(padIdx, dir) {
     lastTap[padIdx] = { dir, t: Date.now() };
@@ -74,6 +75,11 @@
     // the board now, so the overlay can't cover them); chips keep their own
     // visibility logic.
     if (layer) layer.classList.toggle("idle", !driving);
+    // D3: the right pad is pointless when the CPU drives P2 — hide it.
+    // Otherwise CLEAR the inline value so the CSS `.idle .dpad` rule still wins.
+    const cpuP2 = mode === 2 && players[1] && players[1].cpu;
+    if (padEls[0]) padEls[0].style.visibility = "";
+    if (padEls[1]) padEls[1].style.visibility = (driving && cpuP2) ? "hidden" : "";
     if (pauseChip) pauseChip.classList.toggle("on", driving);
     if (quitChip) quitChip.classList.toggle("on", inMini && MiniGame.isActive());
     for (let i = 0; i < 2; i++) {
@@ -97,6 +103,7 @@
   const crt = document.querySelector(".crt");
   const layer = document.querySelector(".touch-layer");
   ghostEls = [document.getElementById("t-ghost-0"), document.getElementById("t-ghost-1")];
+  padEls = [document.getElementById("t-dpad-0"), document.getElementById("t-dpad-1")];
   const pauseChip = document.getElementById("t-pause");
   const quitChip = document.getElementById("t-quit");
 

@@ -90,6 +90,7 @@ const sandbox = {
   setTimeout: (fn, ms) => nodeSetTimeout(fn, ms),     // REAL timer — ghost-fade phase must actually run
   clearTimeout: noop,
   handlers, noop, store, crtEl, layerEl, pauseEl, quitEl, ghost0, ghost1, overlayEl, Set, Number, console, Float32Array, Promise, process,
+  cpuHandlers: [], pad0: fakeEl('t-dpad-0'), pad1: fakeEl('t-dpad-1'), fakeEl, noop, canvasStub,
   fs, vm, __dirname, results,
   check: (name, cond) => results.push((cond ? "PASS" : "FAIL") + " :: " + name),
   performance: { now: () => (box.t += 1) }, box,
@@ -227,6 +228,58 @@ setTimeout(() => {
   check('keyboard legal chain u->l accepted (guard is queue-relative)', jq(players[0].queue) === '["u","l"]');
   key('KeyD');
   check('keyboard reversal (d after queued l) rejected', jq(players[0].queue) === '["u","l"]');
+
+  // ---- D3: CPU opponent on touch — right pad inert + hidden ----
+  {
+    const cpuSrc = ['snake-ai.js', 'game.js', 'egg-baby.js', 'minigame.js', 'touch.js']
+      .map(f => fs.readFileSync(__dirname + '/../src/' + f, 'utf8')).join('\\n');
+    const cpuStore = { snake_best: '0', snake_poop: '0', snake_music_muted: '0', snake_sfx_muted: '0', snake_wrap: '0', snake_track: 'chill', snake_cpu: '1', snake_cpu_lv: 'normal' };
+    const cpuDoc = {
+      getElementById: id =>
+        id === 'game' ? canvasStub
+        : id === 'overlay' ? overlayEl
+        : id === 't-pause' ? pauseEl
+        : id === 't-quit' ? quitEl
+        : id === 't-ghost-0' ? ghost0
+        : id === 't-ghost-1' ? ghost1
+        : id === 't-dpad-0' ? pad0
+        : id === 't-dpad-1' ? pad1
+        : fakeEl(id),
+      querySelector: sel => sel === '.crt' ? crtEl : sel === '.touch-layer' ? layerEl : fakeEl(sel),
+    };
+    const cpuSb = {
+      document: cpuDoc,
+      window: { addEventListener: (ev, fn) => cpuHandlers.push({ ev, fn }), requestAnimationFrame: () => 1, matchMedia: q => ({ matches: true, media: q }) },
+      localStorage: { getItem: k => cpuStore[k] ?? '0', setItem: (k, v) => { cpuStore[k] = String(v); } },
+      requestAnimationFrame: () => 1, setInterval: () => 1, clearInterval: noop, clearTimeout: noop,
+      setTimeout: () => 1,                 // ghost fade timers never fire in vm
+      Set, Number, console, Float32Array, Promise, Date,
+      pad0, pad1, cpuHandlers,
+      check: (name, cond) => results.push((cond ? 'PASS' : 'FAIL') + ' :: ' + name),
+      performance: { now: () => 1 },
+    };
+    cpuSb.globalThis = cpuSb;
+    // NOTE: no backticks here — this whole file body is itself a template
+    // literal, and nested raw backticks would truncate it. Plain string concat.
+    const d3code = [
+      "function ckey(c) { cpuHandlers.filter(h => h.ev === 'keydown').forEach(h => h.fn({ code: c, preventDefault: () => {} })); }",
+      "ckey('Digit2');",
+      "TouchControls.debug.steerPad(1, 'u');",   // right pad hits the CPU snake
+      "TouchControls.debug.steerPad(0, 'u');",   // left pad still steers the human
+      "TouchControls.debug.syncChips();",
+      "check('D3 touch: versus starts with CPU P2', mode === 2 && players[1].cpu === true);",
+      "check('D3 touch: right pad taps are inert for CPU', players[1].queue.length === 0);",
+      "check('D3 touch: left pad still steers human P1', players[0].queue.includes('u'));",
+      "check('D3 touch: syncChips hides the P2 pad, keeps P1 pad', pad1.style.visibility === 'hidden' && pad0.style.visibility === '');",
+      "ckey('KeyC');",
+      "check('D3 touch: C toggles CPU off + persists', localStorage.getItem('snake_cpu') === '0');",
+      "startGame(2);",
+      "TouchControls.debug.steerPad(1, 'd');",
+      "TouchControls.debug.syncChips();",
+      "check('D3 touch: rematch P2 human, right pad steers + inline hidden cleared', !players[1].cpu && players[1].queue.length === 1 && pad1.style.visibility === '');",
+    ].join('\\n');
+    vm.runInNewContext(cpuSrc + '\\n' + d3code, cpuSb);
+  }
 
   // ---- desktop sandbox: touch.js loads with NO listeners, NO DOM access ----
   const acc = [];

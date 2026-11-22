@@ -18,7 +18,7 @@
     <div class="hud">
       <div class="hud-left">
         <span class="p p1">P1&nbsp;<b id="p1score">–</b></span>
-        <span class="p p2" id="p2wrap">P2&nbsp;<b id="p2score">–</b></span>
+        <span class="p p2" id="p2wrap"><span id="p2tag">P2</span>&nbsp;<b id="p2score">–</b></span>
       </div>
       <div class="hud-title">SNEXEL</div>
       <div class="hud-right">BEST&nbsp;<b id="best">0</b></div>
@@ -32,14 +32,14 @@
            touch.js wires them). Translucent so snakes under them stay visible.
            Solo: both pads steer P1. Versus: left = P1, right = P2. -->
       <div class="touch-layer">
-        <div class="dpad p1">
+        <div class="dpad p1" id="t-dpad-0">
           <span class="tghost" id="t-ghost-0"></span>
           <button class="tbtn up"    data-pad="0" data-dir="u" aria-label="Player 1 up"><svg viewBox="0 0 8 8" aria-hidden="true"><path d="M3 0h2v1H3zM2 1h4v1H2zM1 2h6v1H1zM0 3h8v1H0zM3 4h2v4H3z"/></svg></button>
           <button class="tbtn left"  data-pad="0" data-dir="l" aria-label="Player 1 left"><svg viewBox="0 0 8 8" aria-hidden="true"><path d="M0 3h1v2H0zM1 2h1v4H1zM2 1h1v6H2zM3 0h1v8H3zM4 3h4v2H4z"/></svg></button>
           <button class="tbtn right" data-pad="0" data-dir="r" aria-label="Player 1 right"><svg viewBox="0 0 8 8" aria-hidden="true"><path d="M7 3h1v2H7zM6 2h1v4H6zM5 1h1v6H5zM4 0h1v8H4zM0 3h4v2H0z"/></svg></button>
           <button class="tbtn down"  data-pad="0" data-dir="d" aria-label="Player 1 down"><svg viewBox="0 0 8 8" aria-hidden="true"><path d="M3 7h2v1H3zM2 6h4v1H2zM1 5h6v1H1zM0 4h8v1H0zM3 0h2v4H3z"/></svg></button>
         </div>
-        <div class="dpad p2">
+        <div class="dpad p2" id="t-dpad-1">
           <span class="tghost" id="t-ghost-1"></span>
           <button class="tbtn up"    data-pad="1" data-dir="u" aria-label="Player 2 up"><svg viewBox="0 0 8 8" aria-hidden="true"><path d="M3 0h2v1H3zM2 1h4v1H2zM1 2h6v1H1zM0 3h8v1H0zM3 4h2v4H3z"/></svg></button>
           <button class="tbtn left"  data-pad="1" data-dir="l" aria-label="Player 2 left"><svg viewBox="0 0 8 8" aria-hidden="true"><path d="M0 3h1v2H0zM1 2h1v4H1zM2 1h1v6H2zM3 0h1v8H3zM4 3h4v2H4z"/></svg></button>
@@ -60,11 +60,11 @@
   <script src="src/chiptune-music.js?v=3"></script>
   <script src="src/jaunty-music.js?v=2"></script>
   <script src="src/snake-ai.js?v=5"></script>
-  <script src="src/game.js?v=47"></script>
+  <script src="src/game.js?v=48"></script>
   <!-- egg/baby pipeline: classic script AFTER game.js (shared global scope, namespace on window.EggBaby) -->
-  <script src="src/egg-baby.js?v=7"></script>
+  <script src="src/egg-baby.js?v=8"></script>
   <!-- mini-game engine (M3): own loop + keyboard while active; namespace on window.MiniGame -->
   <script src="src/minigame.js?v=7"></script>
-  <script src="src/touch.js?v=6"></script>
+  <script src="src/touch.js?v=7"></script>
 </body>
 </html>

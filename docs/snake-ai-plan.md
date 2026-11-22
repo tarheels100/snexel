@@ -179,11 +179,11 @@ random where game code is involved):
 | C — presets, personality knobs, extra `ai-test.js` cases | ~180 lines | 2–3 h | ✅ done (`snake-ai.js` presets/flee/opp + 7 checks) |
 | D1 — demo snake wiring + browser check | ~20 lines | 1 h | ✅ done (`game.js?v=41` + `snake-ai.js?v=1`) |
 | D2 — baby snake wiring + egg-test regressions | ~40 lines | 2 h | ✅ done (`egg-baby.js?v=7` engine flee tier + chase/avoid soak) |
-| D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h | pending |
+| D3 — human-vs-CPU mode (options UI, tick wiring, HUD, soak) | ~120 lines | 3–4 h | ✅ done (`game.js?v=48` + touch/HUD wiring + 7 soak/integration checks) |
 
 Engine first (A→C ≈ 8–11 h) fully tested standalone; then wiring D1→D2; the
 versus mode (D3) lands last, exactly as requested. Cache versions bumped per
-file as usual (`snake-ai.js?v=1…`).
+file as usual (`snake-ai.js?v=1…`). **All phases shipped.**
 
 **Phase A implementation notes** (shipped):
 - `src/snake-ai.js` — IIFE exposing only `window.SnakeAI` / `globalThis.SnakeAI`;
@@ -288,6 +288,70 @@ review — the demo kept derailing whenever a pineapple/banana spawned):
   zone) overrides the gate.
 - Fruit `kind` is derived from the source arrays, so game.js can keep
   pushing plain `{x, y}` objects.
+
+**D2 implementation notes** (shipped, `egg-baby.js?v=7`):
+- `babyMove()` dispatches to `engineBabyMove()` when `SnakeAI` is loaded;
+  the M2 inline scorer survives as `legacyBabyMove()` for engine-less
+  sandboxes (smoketest etc. load game+egg only).
+- `engineBabyMove()` builds the flee world per tick: baby body/dir, every
+  alive player as a foe (body + dir + `queue` — D3 fixed the field name,
+  `turnQueue` never existed on `makeSnake`), foods/pineapples/bananas,
+  `wrap`, and **visible poops only** (fairness rule); opts cached once via
+  `SnakeAI.presets("baby", GAME_CONFIG.ai.baby)`.
+- Long-lived seeded brain rng `babyRng = mulberry32(777)` — decisions are
+  reproducible in tests without touching the game's spawn RNG.
+- Cornered-freeze fallback: `SnakeAI.debug.legalMoves()` returns **dir
+  strings**; if the engine's answer isn't in that list the baby holds its
+  direction in place (M2 semantics — never dies, stays catchable).
+  First shipped version compared `m.d` against string entries, freezing the
+  baby every tick; caught with a vm rAF-chain sim, fixed to
+  `legal.includes(d)`.
+- Capture/hatch/banner/handoff code untouched; the baby still runs its own
+  slower clock (`babySpeedMul`).
+- `egg-test.js` hardened so freezes can't pass vacuously: avoid soak asserts
+  >10 distinct head positions (engine actually moves), chase soak runs a
+  greedy pursuer under the real capture rule and asserts the baby fled
+  (distinct heads >1) before being caught (16 steps); `EggBaby.debug.tier()`
+  proves `tier === "flee"`.
+
+**D3 implementation notes** (shipped, `game.js?v=48`, `egg-baby.js?v=8`, `touch.js?v=7`):
+- Two persisted toggles: `cpuMode` (`snake_cpu`) and `cpuLv` (`snake_cpu_lv`,
+  cycling `easy → normal → hard`). **C** toggles CPU in any state; **D**
+  cycles difficulty only in menu/options/game-over — mid-play `D` still
+  steers P1 (guard in `handleKeyDown`).
+- `startGame(2)` wires P2 as CPU when the toggle is ON and `SnakeAI` is
+  loaded: `ai`/`cpu` flags, `aiOpts = SnakeAI.presets(cpuLv,
+  GAME_CONFIG.ai.cpu[cpuLv])`, and its own seeded `brainRng` (independent per
+  snake, deterministic in tests). Engine-less scope falls back to a human P2.
+- `aiPickDir(p)` prefers `p.aiOpts` (CPU path) and otherwise keeps the demo
+  engine path; `demoWorld(p, rng)` takes an optional rng so each snake can
+  use its own brain seed. `steerPlayer(i, dir)` early-returns for CPU
+  players — keyboard *and* touch pads can never steer the CPU.
+- HUD shows **CPU** instead of P2 (`#p2tag`); menu row reads
+  "2 PLAYERS — WASD vs CPU"; options screen gains `C` (toggle) and `D`
+  (level) rows with `data-key` attrs so touch chips press them too.
+- `egg-baby.js`: foe body construction now reads `p.queue` (the real
+  `makeSnake` field) — the old `p.turnQueue` was always `undefined`, so
+  baby never saw players' pending turns.
+- `touch.js`: when the CPU drives P2, `syncChips()` sets the right pad's
+  inline `visibility: hidden` and otherwise **clears** the inline value so
+  the `.touch-layer.idle .dpad` CSS rule keeps winning on non-driving
+  screens. Pads delegate through the same `steerPad` guard, so taps on a
+  hidden pad would be inert anyway.
+- `index.html`: pad containers gained ids (`t-dpad-0/1`), HUD P2 slot gained
+  `#p2tag`; versions bumped to `game.js?v=48`, `egg-baby.js?v=8`,
+  `touch.js?v=7`.
+- `tests/ai-test.js` (49 checks): CPU wiring + HUD tag, steering-the-CPU
+  ignored, menu/options rows, KeyD semantics (cycles outside play only,
+  persists), C-off + rematch-is-human, engine-less fallback, and a 200-tick
+  wrap soak where the "human" rival is the engine's **normal** preset driven
+  directly — both snakes stay alive, both score, hard preset rides the cycle
+  tier (hard CPU beat the normal rival 14–5 at the pinned seed).
+- `tests/touch-test.js` (40 checks, 2 sandboxes): versus starts with CPU P2,
+  right-pad taps inert, left pad still steers, pad hidden while CPU drives,
+  C toggle persists, rematch restores a steerable human P2.
+  (The D3 block lives inside touch-test's own sandbox template — nested
+  backticks truncated that template; the block uses plain string concat.)
 
 ## 7. Gotchas & fairness rules
 

@@ -105,18 +105,23 @@ Each prints `label=value (expect …)` lines — compare against the expectation
 
 - Smooth interpolated snake motion (`smooth-motion-plan.md`)
 - Snake AI engine (`snake-ai-plan.md`) — demo snake, smarter catchable baby,
-  and a later human-vs-CPU mode (`cpu-snake-plan.md` is superseded by it).
-  Phases A+B+C shipped: the title-screen demo snake runs `src/snake-ai.js`
-  on a cached Hamiltonian cycle with checked shortcuts and BFS "darts" — it
-  sweeps the board, darts straight at reachable apples from any side (never
-  leaping past one), and never traps itself; hazards degrade it to the BFS tier. The engine also
-  ships five presets (`demo`, `baby`, `easy`, `normal`, `hard`) including a
-  flee mode tuned to keep the baby snake catchable. Press **Q** on the title
-  screen to toggle the demo against the old random walker (small `AI:` tag
-  shows which brain is running). **D2 shipped**: the baby snake now runs the
-  engine flee tier — it arcs away from your head, dodges fruit/piles/blast
-  zones, hesitates (~30% of ticks keep the old direction) so you can read it
-  and intercept, and freezes when cornered instead of dying
+  and human-vs-CPU mode (`cpu-snake-plan.md` is superseded by it).
+  All phases A–D3 shipped. The title-screen demo snake runs
+  `src/snake-ai.js` on a cached Hamiltonian cycle with checked shortcuts and
+  BFS "darts" — it sweeps the board, darts straight at reachable apples from
+  any side (never leaping past one), and never traps itself; hazards degrade
+  it to the BFS tier. The engine also ships five presets (`demo`, `baby`,
+  `easy`, `normal`, `hard`) including a flee mode tuned to keep the baby
+  snake catchable. Press **Q** on the title screen to toggle the demo against
+  the old random walker (small `AI:` tag shows which brain is running).
+  **D2 shipped**: the baby snake now runs the engine flee tier — it arcs
+  away from your head, dodges fruit/piles/blast zones, hesitates (~30% of
+  ticks keep the old direction) so you can read it and intercept, and
+  freezes when cornered instead of dying. **D3 shipped**: press **C**
+  anywhere to make P2 a CPU snake in 2-player mode (HUD shows `CPU`), and
+  **D** in the menu/options to cycle difficulty (easy / normal / hard). The
+  CPU eats, dodges you, and never takes input from keys or touch pads; the
+  right touch pad hides while it drives P2.
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
   — stages 1–3 shipped; stage 4 (optional): swipe steering, orientation hint, haptics
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)

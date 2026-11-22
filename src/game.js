@@ -140,6 +140,14 @@ let wrapMode = localStorage.getItem("snake_wrap") === "1";   // edges are portal
 // ES module in index.html and exposed as window.ChillMusic).
 let track = localStorage.getItem("snake_track") === "retro" ? "retro" : "chill";
 let chill = null;                 // ChillMusic instance, created lazily
+
+// D3: human-vs-CPU versus mode. C toggles the CPU opponent (snake_cpu),
+// D cycles difficulty easy/normal/hard (snake_cpu_lv). Wiring happens per
+// match in startGame(), so mid-game toggles affect the NEXT match only.
+let cpuMode = localStorage.getItem("snake_cpu") === "1";
+let cpuLv = localStorage.getItem("snake_cpu_lv");
+if (cpuLv !== "easy" && cpuLv !== "normal" && cpuLv !== "hard") cpuLv = "normal";
+const CPU_LVS = ["easy", "normal", "hard"];
 let chillStarted = false;         // engine.start() once; later gestures only resume its ctx
 let poops = [];
 let pineapples = [];            // bomb fruit — separate array + spawn roll
@@ -186,6 +194,7 @@ const el = {
   p1: document.getElementById("p1score"),
   p2: document.getElementById("p2score"),
   p2wrap: document.getElementById("p2wrap"),
+  p2tag: document.getElementById("p2tag"),
   best: document.getElementById("best"),
   overlay: document.getElementById("overlay"),
 };
@@ -470,7 +479,18 @@ function startGame(m) {
   setMusicVolume(0.55, 0.3);                // music back to full level
   if (track === "chill" && chill) chill.setIntensity(0.1);    // reopen the chill track
   players = [makeSnake(9, 12, "r", PAL.p1)];
-  if (m === 2) players.push(makeSnake(GW - 10, 12, "l", PAL.p2));
+  if (m === 2) {
+    const p2 = makeSnake(GW - 10, 12, "l", PAL.p2);
+    // D3: P2 becomes a CPU snake driven by the engine preset for the chosen
+    // difficulty. Engine missing (standalone sandbox) → stays human.
+    if (cpuMode && window.SnakeAI) {
+      p2.ai = true;
+      p2.cpu = true;
+      p2.aiOpts = SnakeAI.presets(cpuLv, GAME_CONFIG.ai.cpu[cpuLv] || {});
+      p2.brainRng = SnakeAI.debug.mulberry32(0xc0ffee);   // per-match seed: reproducible routes
+    }
+    players.push(p2);
+  }
   foods = [];
   poops = [];
   pineapples = [];
@@ -518,7 +538,7 @@ function initMenu() {
       <div class="ov-sub">Slither &amp; Chill</div>
       <div class="ov-lines">
         <div data-key="Digit1"><span class="key">1</span><span class="g">1 PLAYER</span></div>
-        <div data-key="Digit2"><span class="key">2</span><span class="o">2 PLAYERS</span> — WASD vs ARROWS</div>
+        <div data-key="Digit2"><span class="key">2</span><span class="o">2 PLAYERS</span> — WASD vs ${cpuMode && window.SnakeAI ? "CPU" : "ARROWS"}</div>
       </div>
       <div class="ov-note"><span class="key" data-key="KeyO">O</span>OPTIONS&nbsp; <span class="key">P</span>PAUSE&nbsp; <span class="key" data-key="Escape">Esc</span>MENU&nbsp; best: ${best}</div>
     </div>`);
@@ -647,6 +667,8 @@ function initOptions() {
       <div class="ov-lines">
         <div data-key="Digit3"><span class="key">3</span>MODE #2 — <span class="${poopMode ? "g" : "dimc"}">${poopMode ? "ON" : "OFF"}</span></div>
         <div data-key="Digit4"><span class="key">4</span>WRAP MODE — <span class="${wrapMode ? "g" : "dimc"}">${wrapMode ? "ON" : "OFF"}</span> — edges are portals</div>
+        <div data-key="KeyC"><span class="key">C</span>CPU OPPONENT — <span class="${cpuMode ? "g" : "dimc"}">${cpuMode ? "ON" : "OFF"}</span> — P2 is CPU in 2-player</div>
+        <div data-key="KeyD"><span class="key">D</span>CPU LEVEL — <span class="${cpuLv === "easy" ? "g" : "dimc"}">EASY</span> / <span class="${cpuLv === "normal" ? "g" : "dimc"}">NORMAL</span> / <span class="${cpuLv === "hard" ? "g" : "dimc"}">HARD</span></div>
         <div data-key="KeyZ"><span class="key">Z</span>MUSIC — <span class="${musicMuted ? "dimc" : "g"}">${musicMuted ? "MUTED" : "ON"}</span></div>
         <div data-key="KeyX"><span class="key">X</span>SFX — <span class="${sfxMuted ? "dimc" : "g"}">${sfxMuted ? "MUTED" : "ON"}</span></div>
         <div data-key="KeyT"><span class="key">T</span>TRACK — <span class="${track === "retro" ? "g" : "dimc"}">RETRO CHIP</span> / <span class="${track === "chill" ? "g" : "dimc"}">CHILL AMBIENCE</span></div>
@@ -788,7 +810,7 @@ const DEMO_AI_OPTS = window.SnakeAI
 // one long-lived seeded RNG: advances per tick (organic) but reproducible.
 const demoBrainRng = window.SnakeAI ? window.SnakeAI.debug.mulberry32(20260120) : null;
 
-function demoWorld(p) {
+function demoWorld(p, rng) {
   const foes = players.filter(q => q !== p && q.alive)
     .map(q => ({ body: q.cells, dir: q.dir, queue: q.queue }));
   return {
@@ -797,11 +819,17 @@ function demoWorld(p) {
     foods, pineapples, bananas,
     poops: poops.filter(po => po.visible),   // fairness: hidden piles unseen
     foes,
-    rng: demoBrainRng,
+    rng: rng || demoBrainRng,
   };
 }
 
 function aiPickDir(p) {
+  // D3 CPU opponent: its own preset opts + brain rng; sees the human snake
+  // as a foe (body + visible turn queue — same info a human rival can see).
+  if (p.aiOpts && window.SnakeAI) {
+    p.dir = SnakeAI.choose(demoWorld(p, p.brainRng), p.aiOpts);
+    return;
+  }
   if (demoEngine && window.SnakeAI) {
     p.dir = SnakeAI.choose(demoWorld(p), DEMO_AI_OPTS);
     return;
@@ -1339,6 +1367,7 @@ function hideOverlay() { el.overlay.classList.remove("show"); }
 function updateHud() {
   el.p1.textContent = players[0] ? players[0].score : "–";
   el.p2.textContent = mode === 2 && players[1] ? players[1].score : "–";
+  if (el.p2tag) el.p2tag.textContent = mode === 2 && players[1] && players[1].cpu ? "CPU" : "P2";
   el.p2wrap.style.visibility = mode === 2 ? "visible" : "hidden";
   el.best.textContent = best;
 }
@@ -1371,6 +1400,21 @@ function handleKeyDown(e) {
   if (code === "Digit4" || code === "KeyN") {
     wrapMode = !wrapMode;
     localStorage.setItem("snake_wrap", wrapMode ? "1" : "0");
+    repaint();
+    return;
+  }
+
+  if (code === "KeyC") {
+    cpuMode = !cpuMode;
+    localStorage.setItem("snake_cpu", cpuMode ? "1" : "0");
+    repaint();
+    return;
+  }
+  // Difficulty cycle — only outside live steering so KeyD keeps steering P1
+  // right during play/pause (menu, options and game-over only).
+  if (code === "KeyD" && (state === "menu" || state === "options" || state === "over")) {
+    cpuLv = CPU_LVS[(CPU_LVS.indexOf(cpuLv) + 1) % 3];
+    localStorage.setItem("snake_cpu_lv", cpuLv);
     repaint();
     return;
   }
@@ -1475,7 +1519,7 @@ window.addEventListener("keydown", handleKeyDown);
 // neck on the next tick.
 function steerPlayer(i, dir) {
   const p = players[i];
-  if (!p || !p.alive) return;
+  if (!p || !p.alive || p.cpu) return;   // CPU snakes are engine-driven
   const last = p.queue.length ? p.queue[p.queue.length - 1] : p.dir;
   if (dir !== last && dir !== REV[last]) p.queue.push(dir);
 }
