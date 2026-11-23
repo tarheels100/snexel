@@ -24,11 +24,15 @@ Audio unlocks on the first key/click (browser autoplay policy).
 | `4` / `N` | Wrap mode toggle — board edges become portals |
 | `Z` / `X` | Mute music / mute SFX |
 | `T` | Switch main music track: chill ↔ retro |
+| `C` | CPU opponent toggle — P2 is computer-driven in 2-player mode |
+| `D` | CPU difficulty cycle (easy/normal/hard) — in menu/options/game-over only |
+| `Q` | Debug: title demo snake brain — AI engine ↔ random walker |
 | `E` | Debug: launch the mini-game directly |
 | `Esc` | Back to title / forfeit mini-game |
 
 All toggles persist in `localStorage` (keys `snake_poop`, `snake_wrap`,
-`snake_music_muted`, `snake_sfx_muted`, `snake_track`, `snake_best`).
+`snake_music_muted`, `snake_sfx_muted`, `snake_track`, `snake_cpu`,
+`snake_cpu_lv`, `snake_best`).
 
 On touch devices (phones/tablets) the keyboard hint is replaced by thumb
 D-pads placed *outside* the board — below it in portrait, to its sides in
@@ -74,9 +78,9 @@ Three Web Audio engines, all classic scripts sharing one AudioContext:
 index.html      page + overlay/HUD
 styles.css      pixel styling, scanlines
 assets/         favicons (SVG + ICO w/ 16 & 32 PNGs + apple-touch 180)
-src/            game.js, egg-baby.js, minigame.js, chiptune-music.js, jaunty-music.js, touch.js
+src/            game.js, snake-ai.js, egg-baby.js, minigame.js, chiptune-music.js, jaunty-music.js, touch.js
 tests/          node sandbox suites (vm-based, no framework)
-docs/        	  design plans + an integration example
+docs/          	  architecture, testing, how-to-edit + feature plans
 ```
 
 Scripts load as plain classic scripts (shared global scope), so keep unique
