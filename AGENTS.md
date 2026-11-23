@@ -93,6 +93,15 @@ All suites must be green plus the combined-scope check before committing.
   `Enter` rematch, `3`/`M` poop toggle, `4`/`N` wrap toggle, `Z`/`X` mute
   music/SFX, `T` track, `Q` demo-brain toggle (menu), `C` CPU toggle,
   `D` CPU difficulty cycle (only outside play), `E` debug mini launch.
+- Steering contract: solo — WASD **and** arrows both steer P1; versus —
+  WASD→P1, arrows→P2, but when P2 is CPU the arrows fall back to P1
+  (`steerPlayer` ignores CPU snakes entirely).
+- Versus result is decided by SCORE, never survival order: a survivor wins
+  the instant they out-score the fallen rival (round ends immediately);
+  otherwise play continues until everyone is dead (see "Versus end rule" in
+  docs/design.md §2).
+- Demo/menu snake eats are cosmetic: no score, no HUD, no level-ups, no
+  music-intensity ramp (`tick()` gates all of that on `state === "playing"`).
 - Persisted localStorage keys: `snake_poop`, `snake_wrap`, `snake_track`,
   `snake_music_muted`, `snake_sfx_muted`, `snake_cpu`, `snake_cpu_lv`,
   `snake_best`.

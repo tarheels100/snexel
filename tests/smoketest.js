@@ -35,6 +35,8 @@ let src = fs.readFileSync(__dirname + '/../src/game.js', 'utf8');
 
 src += `
 const out = [];
+const fails = [];
+function assert(n, c) { out.push((c ? 'ok: ' : 'FAIL: ') + n); if (!c) fails.push(n); }
 function key(c) { handlers.keydown({ code: c, preventDefault: noop }); }
 
 key('Digit2');
@@ -182,24 +184,36 @@ tick();
 out.push('advance past each other: alive=[' + players.map(p => p.alive) + '] heads=' +
   players.map(p => p.cells[0].x).join(','));
 
-// winner determination: P2 survives longer
-players = [makeSnake(0, 5, 'r', PAL.p1), makeSnake(GW - 1, 15, 'l', PAL.p2)];
-eliminations = []; foods = [{x:16,y:12}];
-players[0].alive = false; // pretend P1 already died earlier... do it properly:
-players = [makeSnake(1, 5, 'r', PAL.p1), makeSnake(GW - 2, 15, 'l', PAL.p2)];
-eliminations = []; foods = [{x:16,y:12}];
-players[1].cells.forEach((c,i)=>{ c.y = 23 + i; }); // force P2 to hit top? dir l, set wall via y
-players[1].cells[0].y = GH - 1; players[1].cells.forEach((c,i)=> c.y = GH - 1 + i); // out of bounds tail... simpler: move P2 head to bottom wall
-players = [makeSnake(1, 5, 'r', PAL.p1), makeSnake(20, 22, 'l', PAL.p2)];
-eliminations = []; foods = [{x:16,y:12}];
+// ---- versus end rule: score decides, survival time does not ----
+key('Escape'); key('Digit2');              // fresh versus, scores 0-0
 players[1].cells = [{x:20,y:23},{x:19,y:23},{x:18,y:23},{x:17,y:23}];
 players[1].dir = 'd';
-tick(); // P2 hits bottom wall, P1 keeps moving (P1 dir r, safe)
-out.push('P2 died, P1 alive=' + players[0].alive);
-players[0].cells.forEach((c,i)=>{ c.x = GW - 1 - i; c.y = 5; });
-players[0].dir = 'r';
-tick(); // P1 hits wall -> game over, P1 was last eliminated -> P1 wins
-out.push('game over: state=' + state + ' winner logic ran');
+tick();                                   // P2 hits bottom wall; P1 survives, NOT ahead
+out.push('versus equal scores: P2 died, game continues state=' + state + ' P1alive=' + players[0].alive);
+assert('equal-score death does not end round', state === 'playing' && players[0].alive && !players[1].alive);
+players[0].cells.forEach((c,i)=>{ c.x = GW-1-i; c.y = 5; });
+players[0].dir = 'r'; players[0].queue = [];
+tick();                                   // P1 hits wall too -> both dead, equal -> DRAW
+out.push('versus both dead equal: state=' + state + ' draw=' + el.overlay.innerHTML.includes('DRAW!'));
+assert('both dead equal scores -> DRAW', state === 'over' && el.overlay.innerHTML.includes('DRAW!'));
+
+key('Escape'); key('Digit2');             // survivor out-scores the fallen rival -> immediate win
+foods[0].x = players[0].cells[0].x + DIRS[players[0].dir][0];
+foods[0].y = players[0].cells[0].y + DIRS[players[0].dir][1];
+tick();                                   // P1 scores 1
+players[1].cells = [{x:20,y:23},{x:19,y:23},{x:18,y:23},{x:17,y:23}];
+players[1].dir = 'd';
+tick();                                   // P2 dies at 0; P1 leads 1-0 -> round ends now
+out.push('versus survivor leads: state=' + state + ' win=' + el.overlay.innerHTML.includes('PLAYER 1 WINS!'));
+assert('survivor out-scoring fallen rival ends round as win', state === 'over' && el.overlay.innerHTML.includes('PLAYER 1 WINS!'));
+
+key('Escape'); key('Digit2');             // same-tick crash, different scores -> dead snake wins on score
+players = [makeSnake(5,10,'r',PAL.p1), makeSnake(7,10,'l',PAL.p2)];
+players[0].score = 2; players[1].score = 1;
+eliminations = []; foods = [{x:20,y:20}];
+tick();                                   // head-to-head both die
+out.push('versus crash 2-1: state=' + state + ' winsOnScore=' + el.overlay.innerHTML.includes('PLAYER 1 WINS ON SCORE!'));
+assert('same-tick deaths decide by score, dead winner says WINS ON SCORE', state === 'over' && el.overlay.innerHTML.includes('PLAYER 1 WINS ON SCORE!'));
 
 // ---- mute options ----
 key('Escape');                         // back to menu
@@ -245,6 +259,7 @@ tick();
 out.push('wrap OFF: wall death=' + (!players[0].alive && players[0].cause === 'wall') + ' ls=' + store.snake_wrap);
 
 console.log(out.join('\\n'));
+if (fails.length) throw new Error('smoketest assertions failed: ' + fails.join('; '));
 `;
 
 require('vm').runInNewContext(src, sandbox);

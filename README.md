@@ -16,7 +16,7 @@ Audio unlocks on the first key/click (browser autoplay policy).
 
 | Key | Action |
 | --- | --- |
-| `1` / `2` | Start solo / versus (WASD vs arrow keys) |
+| `1` / `2` | Start solo / versus (WASD vs arrow keys; if P2 is the CPU, both WASD and arrows steer your snake) |
 | `O` | Options screen (mode + audio toggles, track choice) |
 | `Enter` / `Space` | Rematch after game over |
 | `P` | Pause |
@@ -52,6 +52,11 @@ tapped (mis-taps stay legible). Desktop never shows or wires them
   `GAME_CONFIG` at the top of `src/game.js`.
 - **Special fruits**: pineapple (radius blast) and banana (row/column
   cross-fire) wipe terrain and, in versus, kill snakes caught in the blast.
+- **Versus ends on score**: when one snake dies, the round ends immediately
+  if the survivor has out-scored the fallen rival (they win); otherwise the
+  survivor keeps playing until they out-score the rival's final score (win)
+  or die themselves (loss or draw — whoever scored more wins; survival time
+  never decides).
 - **Touch controls (touch devices only)**: translucent thumb pads funnel
   through the same steering guards as keyboard; detected via
   `(hover: none) and (pointer: coarse)` — desktop stays keyboard-only.

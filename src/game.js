@@ -985,7 +985,7 @@ function tick() {
           EggBaby.rollEgg();
         }
       }
-      if (track === "chill" && chill) {
+      if (track === "chill" && chill && state === "playing") {
         if (!musicMuted) chill.eat();                          // in-key pentatonic blip
         chill.setIntensity(Math.min(totalBites() / 30, 1));    // drums/arp/filter open up
       }
@@ -993,20 +993,24 @@ function tick() {
         // hidden under the bulged segment; revealed when it reaches the tail
         poops.push({ x: heads[i].x, y: heads[i].y, visible: false });
       }
-      p.score++;
+      // attract mode eats for looks only — no score, no HUD, no levels, no
+      // music-intensity ramp; the demo snake never tracks or persists anything.
+      if (state === "playing") p.score++;
       // grow `cfg().grow` segments per apple: the new head segment counts as
       // one; extra copies stack at the tail and stretch the bulge run.
       const tail = p.cells[p.cells.length - 1];
       for (let g = 1; g < cfg().grow; g++) p.cells.push({ x: tail.x, y: tail.y });
       // milestone level-ups (shared speed, ramped by TOTAL bites)
-      const lv = levelForBites(totalBites());
-      if (lv > level) {
-        level = lv;
-        levelAt = performance.now();
-        tickMs = speedFor(level);
-        levelSound();
+      if (state === "playing") {
+        const lv = levelForBites(totalBites());
+        if (lv > level) {
+          level = lv;
+          levelAt = performance.now();
+          tickMs = speedFor(level);
+          levelSound();
+        }
+        updateHud();
       }
-      updateHud();
     } else {
       p.cells.pop();
     }
@@ -1025,6 +1029,19 @@ function tick() {
   // baby capture (solo): any snake↔baby overlap removes the baby and opens
   // the mini-game handoff — until M4, a placeholder banner + ding fires
   if (mode === 1 && window.EggBaby) EggBaby.babyCaptureCheck();
+  // versus end rule: once exactly one snake is dead, the round ends as soon
+  // as the survivor has out-scored the fallen rival (they win). Otherwise the
+  // survivor keeps playing — this check runs every tick, so they win the
+  // moment they exceed the rival's score; if they die first, the final score
+  // comparison decides loss or draw.
+  if (mode === 2 && state === "playing") {
+    const survivors = players.filter(p => p.alive);
+    const fallen = players.filter(p => !p.alive);
+    if (survivors.length === 1 && survivors[0].score > fallen[0].score) {
+      gameOver();
+      return;
+    }
+  }
   if (players.every(p => !p.alive)) gameOver();
 }
 
@@ -1180,8 +1197,6 @@ function gameOver() {
   state = "over";
   setMusicVolume(0.34, 0.5);                // music sinks under the results
   if (track === "chill" && chill) chill.gameOver();           // descending sweep + muffle
-  const top = Math.max(...eliminations.map(e => e.t));
-  const finalists = eliminations.filter(e => e.t === top);
   let msg;
   let note = "";
   const causeText = c => ({
@@ -1198,18 +1213,15 @@ function gameOver() {
     else if (players[0].cause === "boom") note = `blasted by a pineapple`;
     else if (players[0].cause === "banana") note = `caught in a banana blast`;
   } else {
+    // Versus result is purely score-based — survival time never decides.
+    // The round ends when everyone is dead, or earlier once a survivor
+    // out-scores the fallen rival (see the versus end rule in tick()).
     let winnerIdx = null;
-    if (finalists.length === 1) {
-      winnerIdx = finalists[0].idx;
-      msg = `<div class="ov-score"><span class="${winnerIdx === 0 ? "g" : "o"}">PLAYER ${winnerIdx + 1} WINS!</span></div>`;
+    if (players[0].score === players[1].score) {
+      msg = `<div class="ov-score">DRAW!</div>`;
     } else {
-      const a = players[finalists[0].idx].score, b = players[finalists[1].idx].score;
-      if (a === b) {
-        msg = `<div class="ov-score">DRAW!</div>`;
-      } else {
-        winnerIdx = a > b ? finalists[0].idx : finalists[1].idx;
-        msg = `<div class="ov-score"><span class="${winnerIdx === 0 ? "g" : "o"}">PLAYER ${winnerIdx + 1} WINS ON SCORE!</span></div>`;
-      }
+      winnerIdx = players[0].score > players[1].score ? 0 : 1;
+      msg = `<div class="ov-score"><span class="${winnerIdx === 0 ? "g" : "o"}">PLAYER ${winnerIdx + 1} ${players[winnerIdx].alive ? "WINS!" : "WINS ON SCORE!"}</span></div>`;
     }
     msg += `<div class="ov-score"><span class="g">P1 ${players[0].score}</span> &nbsp; <span class="o">P2 ${players[1].score}</span></div>`;
     const loserIdx = winnerIdx !== null ? 1 - winnerIdx : null;
@@ -1507,7 +1519,9 @@ function handleKeyDown(e) {
     steerPlayer(0, dir);                    // WASD and arrows both control P1
   } else {
     if (code.startsWith("Key")) steerPlayer(0, dir);
-    if (code.startsWith("Arrow")) steerPlayer(1, dir);
+    // Arrows normally drive P2 — but when the CPU drives P2 there is nobody
+    // to steer, so arrows fall back to the human P1 (WASD still works too).
+    if (code.startsWith("Arrow")) steerPlayer(players[1] && players[1].cpu ? 0 : 1, dir);
   }
 }
 window.addEventListener("keydown", handleKeyDown);

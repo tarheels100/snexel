@@ -56,6 +56,8 @@ over → pause/resume.
   walker, `Q` toggles, canvas tag shows `AI: ENGINE/RANDOM`). Silent
   (`demoQuiet()` gates all SFX in menu). If the demo snake would die,
   `tick()` calls `initMenu()` instead of game-over — title never shows "OVER".
+  The demo snake eats for looks only: score, HUD, levels, and music
+  intensity are play-only (`tick()` gates them on `state === "playing"`).
 - **options** = DOM overlay with rows for poop/wrap/audio/track/CPU toggles;
   each row has `data-key` so touch taps press it.
 - **playing** = main clock: `tick()` steps each `tickMs` via the rAF
@@ -63,6 +65,9 @@ over → pause/resume.
   uses doubling milestones `8, 24, 56, 88, 120, 152, 184…` (interval doubles,
   capped +32). `SPEED_START=130`, `SPEED_MIN=76`, `SPEED_DELTAS=[14,12,10,8,6,4]`,
   divided by `cfg().speedDiv` (solo 0.7 = faster than versus 1).
+  Steering: solo = WASD **and** arrows both steer P1; versus = WASD → P1,
+  arrows → P2 — but when P2 is CPU-driven, arrows fall back to steering P1
+  (`steerPlayer` ignores CPU players entirely).
 - **minigame** = board frozen; main loop only reschedules rAF + runs the
   resume countdown (see §5).
 
@@ -77,6 +82,16 @@ score, eat burst particles + `eatSound()`. In poop mode the eaten square
 becomes a pile **hidden under the bulge** until the bulged tail leaves it
 (`revealPoop`), then it's lethal terrain and the quiet `poopSound()` plop
 fires at *reveal*, not at eat.
+
+### Versus end rule + winner (score decides, survival time does not)
+`tick()` end-check after deaths: if exactly one snake is dead and the
+survivor's score exceeds the fallen rival's, `gameOver()` fires
+**immediately** (survivor wins — checked every tick, so they win the moment
+they overtake). Equal-score deaths never end the round: the survivor keeps
+playing until they overtake (win) or die (then everyone is dead). `gameOver()`
+then declares the winner purely by score: highest scorer wins ("WINS!" if
+alive, "WINS ON SCORE!" for same-tick deaths where the dead snake scored
+more), tie → `DRAW!`. Elimination order is never consulted.
 
 ### Special items (one per bite, rolled after pineapple then banana)
 - **Pineapple** (`GAME_CONFIG.pineapple`): eating blasts all poops/apples

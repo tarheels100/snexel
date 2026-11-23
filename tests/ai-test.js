@@ -398,11 +398,11 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   };
   vm.runInNewContext(code + "\n" + gameSrc + `
     globalThis.demoRes = (() => {
-      let leftMenu = false, maxScore = 0;
+      let leftMenu = false, maxLen = 0;
       for (let i = 0; i < 200; i++) {
         tick();
         if (state !== "menu" || !players[0].alive) leftMenu = true;
-        if (players[0].score > maxScore) maxScore = players[0].score;
+        if (players[0].cells.length > maxLen) maxLen = players[0].cells.length;
       }
       handlers.keydown({ code: "KeyQ", preventDefault: () => {} });
       tick(); tick();
@@ -417,10 +417,11 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
       const menuGains = gains;                      // all menu-gated -> 0
       state = "playing";
       eatSound(); poopSound(); levelSound(); boomSound(); bananaSound(); startJingle();
-      return { leftMenu, maxScore, tag: demoTag, eng: demoEngine, alive: players[0].alive, menuGains, playNodes: gains - menuGains, cycleOpts: DEMO_AI_OPTS.cycle === true };
+      return { leftMenu, maxLen, score: players[0].score, tag: demoTag, eng: demoEngine, alive: players[0].alive, menuGains, playNodes: gains - menuGains, cycleOpts: DEMO_AI_OPTS.cycle === true };
     })();`, sb2);
   const r = sb2.demoRes;
-  check("D1 demo soak: engine menu snake stays in attract mode + eats (restart-safe)", !r.leftMenu && r.maxScore > 0);
+  check("D1 demo soak: engine menu snake stays in attract mode + eats (restart-safe)", !r.leftMenu && r.maxLen > 4);
+  check("demo snake eats for looks: grows but never tracks score", r.score === 0 && r.maxLen > 4);
   check("Q toggles demo brain: legacy walker still runs", r.tag === "AI: RANDOM" && r.eng === false && r.alive);
   check("menu demo SFX silent; gameplay eats still play", r.menuGains === 0 && r.playNodes > 0);
   check("D1 demo switched to Phase B cycle tier (conservative shortcuts)", r.cycleOpts && !r.leftMenu);
@@ -460,15 +461,15 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   vm.runInNewContext(code + "\n" + eggSrc + "\n" + gameSrc + `
     globalThis.demoRes = (() => {
       state = "menu"; initMenu();
-      let left = false, maxScore = 0;
+      let left = false, maxLen = 0;
       for (let i = 0; i < 400; i++) {
         tick();
         if (state !== "menu" || !players[0].alive) left = true;
-        maxScore = players[0].score;
+        maxLen = players[0].cells.length;
       }
-      return { left, maxScore };
+      return { left, maxLen };
     })();`, sb4);
-  check("wrap-mode demo soak (dart regression): stays attract + keeps eating", !sb4.demoRes.left && sb4.demoRes.maxScore >= 8);
+  check("wrap-mode demo soak (dart regression): stays attract + keeps eating", !sb4.demoRes.left && sb4.demoRes.maxLen >= 10);
 
   // ---- D3 wiring: human-vs-CPU versus mode ----
   const stubCtx3 = new Proxy({}, { get: (t, k) => k === "width" ? 256 : k === "height" ? 192 : noop, set: () => true });
@@ -507,6 +508,10 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
       r.humanSteers = players[0].queue.length === 1;
       handlers.keydown({ code: "Escape", preventDefault: () => {} });
       handlers.keydown({ code: "Digit2", preventDefault: () => {} });
+      // vs CPU: arrows have no human P2 to drive, so they steer P1 too.
+      handlers.keydown({ code: "ArrowDown", preventDefault: () => {} });
+      handlers.keydown({ code: "KeyA", preventDefault: () => {} });
+      r.arrowsAndWasdBothSteerHuman = players[0].queue.join("") === "dl" && players[1].queue.length === 0;
       // "Human" rival = engine normal preset driven directly (BFS + flood-fill,
       // no cycle). Competent but beatable — the soak measures whether the CPU
       // survives and scores against a real dodging rival, not a passive snake.
@@ -534,6 +539,7 @@ check("race-skip + flee: foe strictly closer to pineapple -> moves away, never i
   const cr = sbC.cpuRes;
   check("D3: CPU snake wired (cpu flag, ai flag, preset opts, HUD tag)", cr.cpu && cr.ai && cr.opts && cr.hudTag === "CPU");
   check("D3: steering the CPU player is ignored (queue stays empty)", cr.steerIgnored);
+  check("D3: vs CPU, both WASD and arrows steer the human P1", cr.arrowsAndWasdBothSteerHuman);
   check("D3: menu + options rows show CPU toggle/level", cr.menuLabel && cr.optionsRows);
   check("D3: KeyD cycles difficulty outside play; persists; never levels mid-game", cr.lvCycle === "easy" && storeC.snake_cpu_lv === "easy" && cr.lvWhilePlaying === "easy" && cr.humanSteers);
   check("D3: CPU soak (wrap, 200 ticks, bot-controlled human) — both alive, both score", cr.cpuAlive >= 190 && cr.humanAlive === 200 && cr.cpuScore >= 1 && cr.humanScore >= 1);
