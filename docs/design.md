@@ -244,9 +244,12 @@ Detects touch via `matchMedia("(hover: none) and (pointer: coarse)")`; on
 desktop it installs **zero listeners** (touch-test proves DOM untouched).
 One delegated `pointerdown` on `.crt`; `closest()` resolves nearest
 `[data-*]`: `[data-dir]` pad buttons → `steerPad(padIdx, dir)`,
-`[data-action]` chips → pause/forfeit, `[data-key]` overlay rows →
+`[data-action]` chips → pause/quit, `[data-key]` overlay rows →
 `tapKey(code)` (calls game.js's `handleKeyDown({code})`), board tap during
-the mini countdown → skip. Routing: solo = both pads steer P1; versus = left
+the mini countdown → skip. Chips: pause ⇄ `KeyP` (mini ⇄
+`MiniGame.togglePause()`); ✕ quit ⇄ `Esc` during play/pause (quits to the
+title menu) and ⇄ `MiniGame.forfeit()` in mini. The pause overlay's rows
+(`RESUME`, `QUIT TO TITLE`) are tappable too — mobile's way back to the menu. Routing: solo = both pads steer P1; versus = left
 pad P1, right pad P2; mini round = both pads → `MiniGame.touchSteer`.
 Steering goes through game.js `steerPlayer` (same reversal guard as keys),
 so rejected taps never queue. **Pad visibility**: `syncChips()` (120ms poll)

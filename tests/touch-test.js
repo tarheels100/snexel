@@ -164,6 +164,18 @@ check('pause chip pauses game + RESUME overlay',
 tapChip('pause');
 check('pause chip resumes', state === 'playing');
 
+// ---- quit paths: ✕ chip and the pause-screen row both return to title ----
+check('pause screen has tappable QUIT TO TITLE row',
+  tapChip('pause') && overlayEl.innerHTML.includes('data-key="Escape"') && overlayEl.innerHTML.includes('QUIT TO TITLE'));
+tapRow('Escape');
+check('tap QUIT TO TITLE row returns to title menu', state === 'menu');
+tapRow('Digit1');
+check('re-enter play from menu', state === 'playing');
+tapChip('quit');
+check('quit chip during play returns to title menu', state === 'menu');
+tapRow('Digit1');
+check('back in play for the sections below', state === 'playing');
+
 // ---- options screen rows toggle settings ----
 tapRow('Escape');
 check('Esc row from play returns to title', state === 'menu');

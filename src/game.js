@@ -1497,17 +1497,22 @@ function handleKeyDown(e) {
       state = "paused";
       setMusicVolume(0.22, 0.25);           // music ducks under the pause overlay
       showOverlay(`<div class="ov-inner"><div class="ov-title">PAUSED</div>
-        <div class="ov-lines"><div data-key="KeyP"><span class="key">P</span>RESUME</div></div></div>`);
+        <div class="ov-lines">
+          <div data-key="KeyP"><span class="key">P</span>RESUME</div>
+          <div data-key="Escape"><span class="key">ESC</span>QUIT TO TITLE</div>
+        </div></div>`);
     } else {
       initMenu();
     }
     return;
   }
   if (state === "paused") {
-    if (code === "KeyP" || code === "Escape" || code === "Enter") {
+    if (code === "KeyP" || code === "Enter") {
       state = "playing";
       setMusicVolume(0.55, 0.25);
       hideOverlay();
+    } else if (code === "Escape") {
+      initMenu();                           // pause screen's way back to title
     }
     return;
   }

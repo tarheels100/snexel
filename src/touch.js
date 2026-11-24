@@ -65,7 +65,9 @@
     if (state === "playing" || state === "paused") tapKey("KeyP");
   }
   function chipQuit() {
-    if (state === "minigame") MiniGame.forfeit();
+    if (state === "minigame") { MiniGame.forfeit(); return; }
+    // during play/pause the ✕ chip quits to the title menu (Esc semantics)
+    if (state === "playing" || state === "paused") tapKey("Escape");
   }
   function syncChips() {
     if (!enabled) return;
