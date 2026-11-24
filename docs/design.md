@@ -64,8 +64,8 @@ over → pause/resume.
   accumulator; speed from `speedFor(level)` where `levelForBites(bites)`
   uses doubling milestones `8, 24, 56, 88, 120, 152, 184…` (interval doubles,
   capped +32). `SPEED_START=130`, `SPEED_MIN=76`, `SPEED_DELTAS=[14,12,10,8,6,4]`,
-  divided by `cfg().speedDiv` (higher divisor = faster; solo 0.7 = chill,
-  versus 1 = livelier — versus runs ~43% faster than solo by design).
+  divided by `cfg().speedDiv` (higher divisor = faster; both modes 0.7 =
+  matching chill tempo; set versus to 1 for a livelier duel).
   Steering: solo = WASD **and** arrows both steer P1; versus = WASD → P1,
   arrows → P2 — but when P2 is CPU-driven, arrows fall back to steering P1
   (`steerPlayer` ignores CPU players entirely).

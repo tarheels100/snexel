@@ -66,7 +66,7 @@ const PINEAPPLE_SPRITE = [
  * ------------------------------------------------------------------ */
 const GAME_CONFIG = {
   solo:   { apples: 2, grow: 2, speedDiv: 0.7 },
-  versus: { apples: 2, grow: 1, speedDiv: 1 },   // try speedDiv 1.15 for livelier 2P
+  versus: { apples: 2, grow: 1, speedDiv: 0.7 },   // same chill tempo as solo; raise to 1 for livelier 2P
   // Pineapple bomb: spawns on its own limit when an apple is eaten (chance);
   // eating it blasts ALL poops and apples within radius tiles of the bite
   // (hidden piles included, silently), flashes that zone red briefly, and in
