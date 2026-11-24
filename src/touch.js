@@ -9,12 +9,16 @@
  *   - pads            → steerPad(padIdx, dir): MiniGame.touchSteer while a
  *                       mini round is live; steerPlayer(padIdx or 0) while
  *                       playing. Solo: BOTH pads steer P1 (either thumb).
- *                       Versus: left pad = P1, right pad = P2.
+ *                       Versus: left pad = P1, right pad = P2 — but when the
+ *                       CPU drives P2, BOTH pads steer the human P1 (same
+ *                       fallback as arrow keys), so both pads stay visible.
  *   - overlay rows    → data-key attr → handleKeyDown({code}): the exact
  *                       keyboard logic (start 1P/2P, options toggles, track
  *                       switch, rematch, resume, back-to-title).
  *   - pause chip      → MiniGame.togglePause mid-round, KeyP otherwise.
- *   - ✕ chip          → MiniGame.forfeit (visible only mid-mini-round).
+ *   - ✕ chip          → MiniGame.forfeit mid-mini; Esc (quit to title menu)
+ *                       during play/pause. Both chips show while driving OR
+ *                       paused, so the title is always reachable on mobile.
  *   - tap frozen board during the "3 2 1 GO!" countdown → skip (Escape).
  * Audio unlock rides game.js's global pointerdown handler + handleKeyDown's
  * ensureAudio(); taps are real gestures so both fire.
@@ -55,7 +59,9 @@
     markGhost(padIdx, dir);
     if (state === "minigame") { if (window.MiniGame) MiniGame.touchSteer(dir); return; }
     if (state !== "playing") return;
-    steerPlayer(mode === 2 ? padIdx : 0, dir);
+    // versus: padIdx picks the player, UNLESS the CPU drives P2 — then both
+    // pads steer the human P1 (mirrors the arrow-key fallback).
+    steerPlayer(mode === 2 && players[1] && !players[1].cpu ? padIdx : 0, dir);
   }
   function tapKey(code) {
     handleKeyDown({ code, preventDefault() {} });   // same handler keyboard uses
@@ -77,13 +83,15 @@
     // the board now, so the overlay can't cover them); chips keep their own
     // visibility logic.
     if (layer) layer.classList.toggle("idle", !driving);
-    // D3: the right pad is pointless when the CPU drives P2 — hide it.
-    // Otherwise CLEAR the inline value so the CSS `.idle .dpad` rule still wins.
-    const cpuP2 = mode === 2 && players[1] && players[1].cpu;
+    // Both pads stay visible even when the CPU drives P2 — the right pad
+    // then steers the human P1 too (see steerPad). Inline values cleared so
+    // the CSS `.idle .dpad` rule owns visibility on non-driving screens.
     if (padEls[0]) padEls[0].style.visibility = "";
-    if (padEls[1]) padEls[1].style.visibility = (driving && cpuP2) ? "hidden" : "";
-    if (pauseChip) pauseChip.classList.toggle("on", driving);
-    if (quitChip) quitChip.classList.toggle("on", inMini && MiniGame.isActive());
+    if (padEls[1]) padEls[1].style.visibility = "";
+    // chips stay up while driving AND while paused (quit must stay reachable)
+    const chipOn = driving || state === "paused";
+    if (pauseChip) pauseChip.classList.toggle("on", chipOn);
+    if (quitChip) quitChip.classList.toggle("on", chipOn || (inMini && MiniGame.isActive()));
     for (let i = 0; i < 2; i++) {
       const g = ghostEls[i];
       if (!g) continue;

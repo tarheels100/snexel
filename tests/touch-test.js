@@ -128,8 +128,8 @@ check('menu: layer idle, chips off, ghost reset',
 check('tap [1 PLAYER] row starts solo + preventDefault',
   tapRow('Digit1') && state === 'playing' && mode === 1 && players.length === 1);
 TC.syncChips();
-check('playing: pads active, pause chip on',
-  !layerEl.classes.has('idle') && pauseEl.classes.has('on'));
+check('playing: pads active, pause + quit chips on',
+  !layerEl.classes.has('idle') && pauseEl.classes.has('on') && quitEl.classes.has('on'));
 
 // ---- solo: BOTH pads steer P1, reversal guard honored (vs LAST QUEUED dir) ----
 tapPad(0, 'u');
@@ -167,6 +167,8 @@ check('pause chip resumes', state === 'playing');
 // ---- quit paths: ✕ chip and the pause-screen row both return to title ----
 check('pause screen has tappable QUIT TO TITLE row',
   tapChip('pause') && overlayEl.innerHTML.includes('data-key="Escape"') && overlayEl.innerHTML.includes('QUIT TO TITLE'));
+TC.syncChips();
+check('both chips stay visible while paused', pauseEl.classes.has('on') && quitEl.classes.has('on'));
 tapRow('Escape');
 check('tap QUIT TO TITLE row returns to title menu', state === 'menu');
 tapRow('Digit1');
@@ -276,13 +278,13 @@ setTimeout(() => {
     const d3code = [
       "function ckey(c) { cpuHandlers.filter(h => h.ev === 'keydown').forEach(h => h.fn({ code: c, preventDefault: () => {} })); }",
       "ckey('Digit2');",
-      "TouchControls.debug.steerPad(1, 'u');",   // right pad hits the CPU snake
-      "TouchControls.debug.steerPad(0, 'u');",   // left pad still steers the human
+      "TouchControls.debug.steerPad(1, 'u');",   // right pad falls back to the human
+      "TouchControls.debug.steerPad(0, 'l');",   // left pad too — both drive P1
       "TouchControls.debug.syncChips();",
       "check('D3 touch: versus starts with CPU P2', mode === 2 && players[1].cpu === true);",
-      "check('D3 touch: right pad taps are inert for CPU', players[1].queue.length === 0);",
-      "check('D3 touch: left pad still steers human P1', players[0].queue.includes('u'));",
-      "check('D3 touch: syncChips hides the P2 pad, keeps P1 pad', pad1.style.visibility === 'hidden' && pad0.style.visibility === '');",
+      "check('D3 touch: CPU snake takes no pad input', players[1].queue.length === 0);",
+      "check('D3 touch: BOTH pads steer human P1 vs CPU', players[0].queue.length === 2 && players[0].queue[0] === 'u' && players[0].queue[1] === 'l');",
+      "check('D3 touch: both pads stay visible vs CPU', pad0.style.visibility === '' && pad1.style.visibility === '');",
       "ckey('KeyC');",
       "check('D3 touch: C toggles CPU off + persists', localStorage.getItem('snake_cpu') === '0');",
       "startGame(2);",

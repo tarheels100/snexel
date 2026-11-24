@@ -248,14 +248,18 @@ One delegated `pointerdown` on `.crt`; `closest()` resolves nearest
 `tapKey(code)` (calls game.js's `handleKeyDown({code})`), board tap during
 the mini countdown → skip. Chips: pause ⇄ `KeyP` (mini ⇄
 `MiniGame.togglePause()`); ✕ quit ⇄ `Esc` during play/pause (quits to the
-title menu) and ⇄ `MiniGame.forfeit()` in mini. The pause overlay's rows
-(`RESUME`, `QUIT TO TITLE`) are tappable too — mobile's way back to the menu. Routing: solo = both pads steer P1; versus = left
-pad P1, right pad P2; mini round = both pads → `MiniGame.touchSteer`.
+title menu) and ⇄ `MiniGame.forfeit()` in mini. Both chips stay visible
+while driving **and while paused**, so the title is always reachable on
+mobile. The pause overlay's rows (`RESUME`, `QUIT TO TITLE`) are tappable
+too. Routing: solo = both pads steer P1; versus = left pad P1, right pad P2
+— when P2 is CPU, **both pads steer the human P1** (same fallback as the
+arrow keys) and both pads stay visible; mini round = both pads →
+`MiniGame.touchSteer`.
 Steering goes through game.js `steerPlayer` (same reversal guard as keys),
 so rejected taps never queue. **Pad visibility**: `syncChips()` (120ms poll)
 marks `.touch-layer.idle` when nothing is drivable (CSS hides pads but keeps
-chips) and inline-hides the right pad while the CPU drives P2 — inline value
-*cleared* otherwise so CSS `.idle .dpad` wins. Last-tap ghost arrow in each
+chips); pad inline visibility is always *cleared*, so CSS `.idle .dpad`
+owns it. Last-tap ghost arrow in each
 pad center: SVG innerHTML, opacity decayed over ~600ms by the same poll, no
 CSS animation. Icons are inline SVG pixel paths with explicit CSS colors
 (`.dpad.p1 svg { fill: var(--p1) }` etc.) — never glyphs, never

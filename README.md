@@ -36,8 +36,9 @@ All toggles persist in `localStorage` (keys `snake_poop`, `snake_wrap`,
 
 On touch devices (phones/tablets) the keyboard hint is replaced by thumb
 D-pads placed *outside* the board — below it in portrait, to its sides in
-landscape: left pad = P1, right pad = P2 (solo: either pad steers P1), plus
-a pause chip on the board, a mini-game forfeit chip, and tap-to-press
+landscape: left pad = P1, right pad = P2 (solo or vs CPU: either pad steers
+your snake), plus pause and quit chips on the board (quit returns to the
+title menu; mid mini-game it forfeits) and tap-to-press
 overlay rows. Each pad's center cell flashes a fading ghost of the arrow you
 tapped (mis-taps stay legible). Desktop never shows or wires them
 (media-query detection).
@@ -129,8 +130,8 @@ Each prints `label=value (expect …)` lines — compare against the expectation
   freezes when cornered instead of dying. **D3 shipped**: press **C**
   anywhere to make P2 a CPU snake in 2-player mode (HUD shows `CPU`), and
   **D** in the menu/options to cycle difficulty (easy / normal / hard). The
-  CPU eats, dodges you, and never takes input from keys or touch pads; the
-  right touch pad hides while it drives P2.
+  CPU eats, dodges you, and never takes input from keys or touch pads; while
+  it drives P2, the arrow keys and BOTH touch pads steer your snake.
 - Overlayed touch D-pads, shown only on touch devices (`touch-controls-plan.md`)
   — stages 1–3 shipped; stage 4 (optional): swipe steering, orientation hint, haptics
 - Egg/baby/mini-game milestone M5: polish + remove debug `E` key (`egg-minigame-plan.md`)

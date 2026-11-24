@@ -103,11 +103,13 @@ styles.css?v=8, index.html):**
   poop/wrap/mute/track, resolving the plan's "out of scope" note), pause
   RESUME (KeyP), game-over REMATCH/Esc.
 - Chip visibility: `setInterval(syncChips, 120ms)` polls state (no event hook
-  exists for state transitions); pause chip shows while playing or mid-mini,
-  ✕ chip only mid-round (not during countdown).
+  exists for state transitions); pause AND ✕ chips show while playing,
+  paused, or mid-mini (✕ = quit to title in play/pause, forfeit mid-mini;
+  both hidden during countdown/menu/options/over).
 - Tapping the frozen board during the resume countdown skips it (Escape).
-- Solo routing: both pads steer P1; versus pad→player index; mini rounds:
-  both pads steer MiniGame regardless of mode.
+- Solo routing: both pads steer P1; versus pad→player index, but when the
+  CPU drives P2 BOTH pads steer human P1 (both pads stay visible); mini
+  rounds: both pads steer MiniGame regardless of mode.
 - Pads/chips use `touch-action: none`; small-phone media query shrinks the
   cross to 36px cells so both pads fit a ~300px board.
 - `window.TouchControls` + `globalThis.TouchControls` alias; debug API is
