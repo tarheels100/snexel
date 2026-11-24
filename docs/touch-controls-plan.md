@@ -20,10 +20,12 @@ Keyboard behavior stays exactly as-is on desktop.
    goes through the same queue + same 180°-reversal guard as keyboard.
    `pointerdown` only (no `click`) so there's no ghost double-trigger;
    `touchstart` gets `preventDefault()` to kill scroll/zoom/long-press menus.
-4. **Action buttons** — one ⏚ pause chip (top-right of board) that toggles
-   game pause and mini pause; menu/game-over overlays become tap targets
+4. **Action buttons** — pause chip + ✕ chip: pause toggles game/mini pause;
+   ✕ quits to the title during play/pause and forfeits mid-mini-round.
+   Placement (post-implementation revision): OUTSIDE the board — above its
+   top-right corner in portrait, stacked in the right strip beside it in
+   landscape. Menu/game-over overlays become tap targets
    (tap a listed option = pressing its key) rather than adding more chips.
-   Esc-role chips only where needed: a small ✕ forfeit during the mini-game.
 5. **New file** `src/touch.js` — classic script, `window.TouchControls`
    namespace, loaded after `minigame.js` (it needs `steerPlayer` +
    `MiniGame.touchSteer`). No new state; nothing persists.
@@ -130,6 +132,12 @@ the plan's corner-overlay pads were replaced by pads OUTSIDE the board —
 - pads hidden entirely when nothing is drivable (menu/options/pause/over or
   countdown): `syncChips` toggles `.idle` on the layer; chips keep their own
   logic, and overlay taps still press menu/rematch/resume.
+- chip placement is orientation-specific and lives at the END of styles.css
+  (same specificity as the base `.tchip` rule — file order decides): portrait
+  puts both chips above the board (`top: -chip-h - 6px`, `.crt` margin-top
+  reserves the strip, `--chrome` bumped to 172px); landscape stacks them in
+  the right strip (`right: -chip-w - 10px`). Knobs: `--chip-h: 26px`,
+  `--chip-w: 32px`.
 
 ### Stage 3 — presentation + tests (~2h) ✅ IMPLEMENTED
 

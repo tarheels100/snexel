@@ -210,7 +210,8 @@ canvas {
 /* ------------------------------------------------------------------ */
 /* One knob controls pad cell size; shrink queries just retune it, and   */
 /* every position/reservation calc below reads it via 3*var(--pad).      */
-:root { --pad: 44px; }
+/* --chip-h/--chip-w: action chip box size, read by chip placement calc. */
+:root { --pad: 44px; --chip-h: 26px; --chip-w: 32px; }
 
 .touch-layer {
   position: absolute;
@@ -281,6 +282,11 @@ canvas {
   .game {
     padding-bottom: calc(3 * var(--pad) + 16px + env(safe-area-inset-bottom, 0px));
   }
+  /* chips sit ABOVE the board's top-right corner (never over the board);
+     .crt margin reserves that strip so the HUD never collides with them.
+     Chip placement itself lives at the file end (after the base .tchip). */
+  .crt       { margin-top: calc(var(--chip-h) + 14px); }
+  :root { --chrome: 172px; }   /* board height cap accounts for chip strip */
 }
 
 /* LANDSCAPE touch: pads sit to the SIDES of the board, vertically
@@ -289,6 +295,8 @@ canvas {
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
   .dpad.p1 { left: calc(-3 * var(--pad) - 16px); bottom: auto; top: 50%; transform: translateY(-50%); }
   .dpad.p2 { right: calc(-3 * var(--pad) - 16px); bottom: auto; top: 50%; transform: translateY(-50%); }
+  /* chips sit in the RIGHT strip beside the board, stacked — the strip is
+     already reserved by the pad padding (placement rules at file end) */
   .game {
     padding-left: calc(3 * var(--pad) + 16px + env(safe-area-inset-left, 0px));
     padding-right: calc(3 * var(--pad) + 16px + env(safe-area-inset-right, 0px));
@@ -326,3 +334,16 @@ canvas {
 .tchip.on { display: block; }
 .tchip.quit { right: 48px; border-color: #ee2d2c; color: #ee2d2c; }
 .tchip:active { background: rgba(12, 14, 24, .85); transform: translateY(1px); }
+
+/* Chip placement per orientation — LAST in the file on purpose: these
+   share specificity with the base .tchip rules above, so file order is the
+   tiebreaker. Portrait: above the board's top-right corner; landscape:
+   stacked in the right strip beside the board (clear of the pads). */
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .tchip     { top: calc(-1 * var(--chip-h) - 6px); }
+  .tchip.quit { right: calc(var(--chip-w) + 8px); }
+}
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .tchip     { top: 8px; right: calc(-1 * var(--chip-w) - 10px); }
+  .tchip.quit { top: calc(8px + var(--chip-h) + 8px); }
+}

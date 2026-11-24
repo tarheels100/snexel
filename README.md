@@ -37,8 +37,9 @@ All toggles persist in `localStorage` (keys `snake_poop`, `snake_wrap`,
 On touch devices (phones/tablets) the keyboard hint is replaced by thumb
 D-pads placed *outside* the board — below it in portrait, to its sides in
 landscape: left pad = P1, right pad = P2 (solo or vs CPU: either pad steers
-your snake), plus pause and quit chips on the board (quit returns to the
-title menu; mid mini-game it forfeits) and tap-to-press
+your snake), plus pause and quit chips — above the board in portrait, stacked
+to its right in landscape (quit returns to the title menu; mid mini-game it
+forfeits) — and tap-to-press
 overlay rows. Each pad's center cell flashes a fading ghost of the arrow you
 tapped (mis-taps stay legible). Desktop never shows or wires them
 (media-query detection).
