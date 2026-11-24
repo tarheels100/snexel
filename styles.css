@@ -282,11 +282,10 @@ canvas {
   .game {
     padding-bottom: calc(3 * var(--pad) + 16px + env(safe-area-inset-bottom, 0px));
   }
-  /* chips sit ABOVE the board's top-right corner (never over the board);
-     .crt margin reserves that strip so the HUD never collides with them.
-     Chip placement itself lives at the file end (after the base .tchip). */
-  .crt       { margin-top: calc(var(--chip-h) + 14px); }
-  :root { --chrome: 172px; }   /* board height cap accounts for chip strip */
+  /* chips sit ABOVE the HUD row (placement rules at the file end), so the
+     HUD stays glued to the board; the strip above the HUD is reserved by
+     .hud margin-top there. */
+  :root { --chrome: 186px; }   /* board height cap accounts for chip strip */
 }
 
 /* LANDSCAPE touch: pads sit to the SIDES of the board, vertically
@@ -295,8 +294,8 @@ canvas {
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
   .dpad.p1 { left: calc(-3 * var(--pad) - 16px); bottom: auto; top: 50%; transform: translateY(-50%); }
   .dpad.p2 { right: calc(-3 * var(--pad) - 16px); bottom: auto; top: 50%; transform: translateY(-50%); }
-  /* chips sit in the RIGHT strip beside the board, stacked — the strip is
-     already reserved by the pad padding (placement rules at file end) */
+  /* chips sit ABOVE the HUD row, clear of the side pads (placement rules at
+     the file end) — the side strips belong to the pads alone */
   .game {
     padding-left: calc(3 * var(--pad) + 16px + env(safe-area-inset-left, 0px));
     padding-right: calc(3 * var(--pad) + 16px + env(safe-area-inset-right, 0px));
@@ -335,15 +334,24 @@ canvas {
 .tchip.quit { right: 48px; border-color: #ee2d2c; color: #ee2d2c; }
 .tchip:active { background: rgba(12, 14, 24, .85); transform: translateY(1px); }
 
-/* Chip placement per orientation — LAST in the file on purpose: these
-   share specificity with the base .tchip rules above, so file order is the
-   tiebreaker. Portrait: above the board's top-right corner; landscape:
-   stacked in the right strip beside the board (clear of the pads). */
-@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
-  .tchip     { top: calc(-1 * var(--chip-h) - 6px); }
-  .tchip.quit { right: calc(var(--chip-w) + 8px); }
-}
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
-  .tchip     { top: 8px; right: calc(-1 * var(--chip-w) - 10px); }
-  .tchip.quit { top: calc(8px + var(--chip-h) + 8px); }
+/* Chip placement — LAST in the file on purpose: these share specificity
+   with the base .tchip rules above, so file order is the tiebreaker. Both
+   orientations put the chips ABOVE the HUD row (never over the board, never
+   over the pads): portrait used to wedge them between HUD and board, which
+   shoved the title/score bar away from the board, and landscape stacked them
+   in the right strip, where the ✕ chip kept colliding with the right d-pad
+   (and its base right:48px pushed it onto the board). The HUD gets an
+   explicit --hud-h so the negative top lands exactly above it, and its
+   margin-top reserves that strip. */
+@media (hover: none) and (pointer: coarse) {
+  :root { --hud-h: 14px; }
+  .hud {
+    height: var(--hud-h);
+    margin-top: calc(var(--chip-h) + 12px);
+  }
+  /* top is measured from .crt's padding box (4px inside its border): the
+     16px keeps the chip bottom 6px clear of the HUD's top edge */
+  .tchip      { top: calc(-1 * (var(--hud-h) + var(--chip-h) + 16px)); right: 8px; }
+  .tchip.quit { top: calc(-1 * (var(--hud-h) + var(--chip-h) + 16px));
+                right: calc(var(--chip-w) + 10px); }   /* left of the P chip */
 }

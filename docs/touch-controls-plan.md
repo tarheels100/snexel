@@ -132,12 +132,15 @@ the plan's corner-overlay pads were replaced by pads OUTSIDE the board —
 - pads hidden entirely when nothing is drivable (menu/options/pause/over or
   countdown): `syncChips` toggles `.idle` on the layer; chips keep their own
   logic, and overlay taps still press menu/rematch/resume.
-- chip placement is orientation-specific and lives at the END of styles.css
-  (same specificity as the base `.tchip` rule — file order decides): portrait
-  puts both chips above the board (`top: -chip-h - 6px`, `.crt` margin-top
-  reserves the strip, `--chrome` bumped to 172px); landscape stacks them in
-  the right strip (`right: -chip-w - 10px`). Knobs: `--chip-h: 26px`,
-  `--chip-w: 32px`.
+- chip placement lives at the END of styles.css (same specificity as the base
+  `.tchip` rule — file order decides): both orientations now put the chips
+  ABOVE the HUD row (`top: -(hud-h + chip-h + 16px)`, quit chip left of the P
+  chip), with `.hud` height `--hud-h: 14px` for that deterministic offset and
+  `margin-top: chip-h + 12px` reserving the strip; portrait `--chrome` is
+  186px. Earlier attempts wedged them between HUD and board (shoving the
+  title/score bar away from the board) and stacked them in the landscape right
+  strip (✕ chip collided with the right d-pad and its base `right: 48px`
+  landed it on top of the board). Knobs: `--chip-h: 26px`, `--chip-w: 32px`.
 
 ### Stage 3 — presentation + tests (~2h) ✅ IMPLEMENTED
 

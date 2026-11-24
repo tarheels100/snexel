@@ -255,10 +255,12 @@ too. Routing: solo = both pads steer P1; versus = left pad P1, right pad P2
 — when P2 is CPU, **both pads steer the human P1** (same fallback as the
 arrow keys) and both pads stay visible; mini round = both pads →
 `MiniGame.touchSteer`.
-Chips live OUTSIDE the board: above its top-right corner in portrait
-(`.crt` margin reserves the strip), stacked in the right strip beside it in
-landscape — placement rules sit at the END of styles.css because they share
-specificity with the base `.tchip` rule (file order is the tiebreaker).
+Chips live OUTSIDE the board and ABOVE the HUD row (side by side at its
+right end — never over the board, never over the pads, in both orientations).
+Placement rules sit at the END of styles.css because they share specificity
+with the base `.tchip` rule (file order is the tiebreaker); the touch HUD gets
+an explicit `--hud-h` so the chips' negative `top` lands exactly above it, and
+`.hud` `margin-top` reserves that strip.
 Steering goes through game.js `steerPlayer` (same reversal guard as keys),
 so rejected taps never queue. **Pad visibility**: `syncChips()` (120ms poll)
 marks `.touch-layer.idle` when nothing is drivable (CSS hides pads but keeps
